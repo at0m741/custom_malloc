@@ -5,25 +5,33 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <sys/mman.h>
+#include <immintrin.h>
 
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 
-#define DEBUG 1
-#define ALIGNMENT 8
+#define ALIGNMENT 16
 #define ALIGN(size, alignment) (((size) + (alignment - 1)) & ~(alignment - 1))
 #define MMAP_THRESHOLD (128 * 1024) 
 #define MMAP_SIZE (128 * 1024)
 #define MMAP_ALIGN(size) (((size) + (MMAP_SIZE - 1)) & ~(MMAP_SIZE - 1))
+#define BIN_COUNT 10
+#define BIN_MAX_SIZE 128
+#define CACHE_SIZE_L1 32768
+#define CACHE_SIZE_L2 262144 
+/* get cache level */
+void get_cache_info();
+void *allocate_cache(size_t size);
 
 
-typedef struct __attribute__((aligned(ALIGNMENT))) Block {
+typedef struct Block {
     size_t size;
     struct Block *next;
     int free;
 	void *aligned_address;
+	int is_mmap;
 } Block;
 
 #define BLOCK_SIZE ALIGN(sizeof(Block), ALIGNMENT)

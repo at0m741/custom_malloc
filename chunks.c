@@ -32,7 +32,7 @@ void split_block(Block *block, size_t size) {
 	else 
 	{
 		#ifdef DEBUG
-			printf("Splitting block at %p into blocks of size %zu and %zu\n", block, block->size, 0);
+			printf("Splitting block at %p into blocks of size %zu and %d\n", block, block->size, 0);
 		#endif
 	}
 }
@@ -60,6 +60,7 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
 		printf("Allocated memory at address %p\n", block->aligned_address);
 	    printf("Allocated blocks: %d\n", allocated_blocks);
 		printf("\n");
+		check_alignment(block->aligned_address);
 	#endif
     return block;
 }
@@ -78,6 +79,7 @@ void *request_space_mmap(size_t size, size_t alignment) {
     block->size = size;
     block->next = NULL;
     block->free = 0;
+	block->is_mmap = 1;
 
     void *aligned_addr = (void *)ALIGN((uintptr_t)(block + 1), alignment);
     block->aligned_address = aligned_addr;
@@ -86,6 +88,7 @@ void *request_space_mmap(size_t size, size_t alignment) {
 	#ifdef DEBUG
 		printf("Allocated memory at address %p\n", block->aligned_address);
 	    printf("Allocated blocks: %d\n", allocated_blocks);	
+		check_alignment(block->aligned_address);
 		printf("\n");
 	#endif
     return block->aligned_address;

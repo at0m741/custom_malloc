@@ -19,6 +19,7 @@ void coalesce_free_blocks() {
 		#ifdef DEBUG
 			printf("Coalescing free blocks\n");
 			printf("Block at %p has size %zu\n", current, current->size);
+		    check_alignment(current->aligned_address);
 		#endif
 	}
 	#ifdef DEBUG
@@ -27,14 +28,29 @@ void coalesce_free_blocks() {
 }
 
 void _free(void *ptr) {
-    if (__builtin_expect(ptr == NULL, 0))
-		return;
 
-    Block *block = (Block *)ptr - 1;
-    block->free = 1;
-    freed_blocks++;
-	#ifdef DEBUG
-		printf("Freeing block at %p\n", block);
-	#endif
-    coalesce_free_blocks();
+    if (__builtin_expect(ptr == NULL, 0)){
+	
+		return;
+	}
+	Block *block = (Block *)ptr - 1;
+	if (block->is_mmap)
+	{
+		munmap(block, block->size + sizeof(Block));
+		allocated_blocks--;
+		freed_blocks++;
+		#ifdef DEBUG
+			printf("Freeing mmap block at %p\n", block);
+		#endif
+	}
+	else
+	{
+
+		block->free = 1;
+	    freed_blocks++;
+		#ifdef DEBUG
+			printf("Freeing block at %p\n", block);
+		#endif
+		coalesce_free_blocks();
+	}
 }

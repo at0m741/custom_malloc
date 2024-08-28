@@ -6,7 +6,11 @@ CFLAGS = -g
 SRC = $(wildcard *.c)
 
 OBJ = $(SRC:.c=.o)
-		
+
+ifeq ($(DEBUG), true)
+	CFLAGS += -D DEBUG
+endif
+
 all: $(NAME)
 
 $(NAME): $(OBJ)
