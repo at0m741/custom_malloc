@@ -1,7 +1,7 @@
 NAME = custom_alloc
 CC = clang
 
-CFLAGS = -g
+CFLAGS = -g -mavx2
 
 SRC = $(wildcard *.c)
 

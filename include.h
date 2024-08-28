@@ -36,6 +36,9 @@ typedef struct Block {
 
 #define BLOCK_SIZE ALIGN(sizeof(Block), ALIGNMENT)
 
+void *_memcpy_avx(void *dest, const void *src, size_t n);
+void *_memset_avx(void *s, int c, size_t n);
+void *_memset_ERMS(void *s, int c, size_t n); 
 Block *find_free_block(Block **last, size_t size, size_t alignment); 
 void split_block(Block *block, size_t size);
 void *request_space_mmap(size_t size, size_t alignment);
@@ -43,6 +46,7 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment);
 void check_alignment(void *aligned_address);
 void coalesce_free_blocks(); 
 void *_malloc(size_t size);
+void *_aligned_alloc(size_t alignment, size_t size);
 void _free(void *ptr);
 void check_for_leaks();
 void hexdump(void *ptr, size_t size);
