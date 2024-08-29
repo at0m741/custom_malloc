@@ -6,9 +6,9 @@ int freed_blocks = 0;
 Block *bins[BIN_COUNT] = {NULL};
 
 /*
-* this is the custom malloc function
-* size: size of the memory to be allocated
-* Returns: pointer to the allocated memory
+	* this is the custom malloc function
+	* size: size of the memory to be allocated
+	* Returns: pointer to the allocated memory
 */	
 
 void *_malloc(size_t size) {
@@ -73,6 +73,23 @@ void *_malloc(size_t size) {
 }
 
 
+/*
+	* this is the custom aligned malloc function 
+	* alignment: alignment of the memory to be allocated
+	* size: size of the memory to be allocated
+	* Returns: pointer to the allocated memory
+	*
+	* This function is used to allocate memory with a specific alignment
+	* principaly used for SIMD instructions (SSE, AVX, etc.)
+	* The function will allocate a block of memory with a size greater than the requested size
+	* The function will then align the memory to the requested alignment
+	* The function will then return the aligned memory
+	* The function will use sbrk to allocate memory if the requested size is larger than the block size
+	* The function will use mmap to allocate memory if the requested size is larger than the mmap threshold
+	*
+*/
+
+
 void *_aligned_alloc(size_t alignment, size_t size) {
     if (__builtin_expect(size == 0, 0) || (alignment & (alignment - 1)) != 0)
         return NULL;
@@ -113,7 +130,7 @@ void *_aligned_alloc(size_t alignment, size_t size) {
     uintptr_t addr = (uintptr_t)block->aligned_address;
     uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
     block->aligned_address = (void *)aligned_addr;
-	if (alignment >= 32)
+	if (alignment >= 32 && __builtin_cpu_supports("avx"))
 	{
 		#ifdef DEBUG
 			printf("Allocated memory at address %p (Block %d, aligned to %zu)\n", block->aligned_address, allocated_blocks, alignment);

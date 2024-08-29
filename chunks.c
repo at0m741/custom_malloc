@@ -6,10 +6,10 @@ extern size_t block_size;
 extern int allocated_blocks;
 
 /*
-* Function to find a free block in the freelist
-* size: size of the memory to be allocated
-* alignment: alignment of the memory to be allocated
-* Returns: pointer to the allocated memory
+	* Function to find a free block in the freelist
+	* size: size of the memory to be allocated
+	* alignment: alignment of the memory to be allocated
+	* Returns: pointer to the allocated memory
 */
 
 Block *find_free_block(Block **last, size_t size, size_t alignment) {
@@ -29,10 +29,10 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 
 /*
 	* Function to split a block into two blocks
-* block: block to be split
-* size: size of the memory to be allocated
-* this function is called when the block is larger than the requested size
-* the block is split into two blocks, one of the requested size and the other of the remaining size
+	* block: block to be split
+	* size: size of the memory to be allocated
+	* this function is called when the block is larger than the requested size
+	* the block is split into two blocks, one of the requested size and the other of the remaining size
 */
 
 
@@ -60,12 +60,12 @@ void split_block(Block *block, size_t size) {
 }
 
 /*
-* this function call sbrk to allocate memory
-* last: last block in the freelist
-* size: size of the memory to be allocated
-* alignment: alignment of the memory to be allocated
-* only be used if the requested size is larger than the block size
-* Returns: pointer to the allocated memory
+	* this function call sbrk to allocate memory
+	* last: last block in the freelist
+	* size: size of the memory to be allocated
+	* alignment: alignment of the memory to be allocated
+	* only be used if the requested size is larger than the block size
+	* Returns: pointer to the allocated memory
 */
 
 Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
@@ -98,10 +98,10 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
 }
 
 /*
-* this function call mmap to allocate memory
-* size: size of the memory to be allocated
-* alignment: alignment of the memory to be allocated
-* Returns: pointer to the allocated memory
+	* this function call mmap to allocate memory
+	* size: size of the memory to be allocated
+	* alignment: alignment of the memory to be allocated
+	* Returns: pointer to the allocated memory
 */
 
 
@@ -135,10 +135,10 @@ void *request_space_mmap(size_t size, size_t alignment) {
 }
 
 /*
- * function to binary search for a block in the freelist
- * ptr: pointer to the memory block
- * Returns: pointer to the block
- */
+	* function to binary search for a block in the freelist
+	* ptr: pointer to the memory block
+	* Returns: pointer to the block
+*/
 
 Block *binary_search(Block *ptr) {
 	Block *current = freelist;

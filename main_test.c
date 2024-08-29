@@ -79,6 +79,16 @@ int main() {
 	_free(ptr6);
 	printf("Number of blocks freed: %d\n", freed_blocks);
 
+	void *ptr7 = (void *)_aligned_alloc(32, 100);
+	if (ptr7 == NULL) {
+		printf("Allocation failed\n");
+		return 1;
+	}
+	hexdump(ptr7, 100);
+	printf("Allocated memory at address %p (Block 7)\n", ptr7);
+
+	_free(ptr7);
+
     check_for_leaks();    
     return 0;
 }
