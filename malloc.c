@@ -28,6 +28,8 @@ void *_malloc(size_t size) {
 		{
             #if DEBUG
 				printf("Allocating from bin %d\n", bin_index);
+				printf("Block size: %zu\n", size);
+				printf("\n");
             #endif
             Block *block = bins[bin_index];
             bins[bin_index] = block->next;
@@ -115,6 +117,8 @@ void *_aligned_alloc(size_t alignment, size_t size) {
 	{
 		#ifdef DEBUG
 			printf("Allocated memory at address %p (Block %d, aligned to %zu)\n", block->aligned_address, allocated_blocks, alignment);
+			printf("Using AVX\n");
+			printf("\n");
 		#endif
 		_memset_avx(block->aligned_address, 0, size);
 	}
@@ -122,6 +126,8 @@ void *_aligned_alloc(size_t alignment, size_t size) {
 	{
 		#ifdef DEBUG
 			printf("Allocated memory at address %p (Block %d, aligned to %zu)\n", block->aligned_address, allocated_blocks, alignment);
+			printf("Using ERMS\n");
+			printf("\n");
 		#endif
 		_memset_ERMS(block->aligned_address, 0, size);
 	}

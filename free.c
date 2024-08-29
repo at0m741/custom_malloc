@@ -49,7 +49,9 @@ void _free(void *ptr) {
 		block->free = 1;
 	    freed_blocks++;
 		#ifdef DEBUG
+			printf("Block at %p has size %zu\n", block, block->size);
 			printf("Freeing block at %p\n", block);
+			printf("\n");
 		#endif
 		coalesce_free_blocks();
 	}

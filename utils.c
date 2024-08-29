@@ -5,6 +5,16 @@ extern size_t block_size;
 extern int allocated_blocks;
 extern int freed_blocks;
 
+int count_blocks(Block *list) {
+	Block *current = list;
+	int count = 0;
+	while (current != NULL) {
+		count++;
+		current = current->next;
+	}
+	return count;
+}
+
 void check_for_leaks() {
     if (allocated_blocks != freed_blocks) 
         printf("Potential memory leak detected: %d blocks allocated, %d blocks freed.\n",
@@ -29,5 +39,11 @@ void hexdump(void *ptr, size_t size) {
         if ((i + 1) % 16 == 0)
             printf("\n%p: ", p + i + 1);
     }
+	printf("\n");
+	printf("\n");
+	printf("Size of the memory block: %lu bytes\n", size);
+	printf("Address of the memory block: %p\n", ptr);
+	printf("Number of blocks allocated: %d\n", count_blocks(freelist));
+
 	printf("\n");
 }

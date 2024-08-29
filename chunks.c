@@ -18,6 +18,11 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 	{
         *last = current;
         current = current->next;
+		#ifdef DEBUG
+			printf("Searching for free block\n");
+			printf("Current block: %p\n", current);
+			printf("\n");
+		#endif
     }
     return current;
 }
@@ -48,6 +53,8 @@ void split_block(Block *block, size_t size) {
 	{
 		#ifdef DEBUG
 			printf("Splitting block at %p into blocks of size %zu and %d\n", block, block->size, 0);
+			printf("Block size is less than requested size\n");
+			printf("\n");
 		#endif
 	}
 }
@@ -65,6 +72,7 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
     Block *block = sbrk(0);
 	#ifdef DEBUG
 		printf("Requesting space with sbrk\n");
+		printf("Requested size: %zu\n", size);
 	#endif
     void *request = sbrk(size + BLOCK_SIZE + alignment); 
     if (request == (void *)-1) 
@@ -83,8 +91,8 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
 	#ifdef DEBUG
 		printf("Allocated memory at address %p\n", block->aligned_address);
 	    printf("Allocated blocks: %d\n", allocated_blocks);
-		printf("\n");
 		check_alignment(block->aligned_address);
+		printf("\n");
 	#endif
     return block;
 }
@@ -124,4 +132,34 @@ void *request_space_mmap(size_t size, size_t alignment) {
 		printf("\n");
 	#endif
     return block->aligned_address;
+}
+
+/*
+ * function to binary search for a block in the freelist
+ * ptr: pointer to the memory block
+ * Returns: pointer to the block
+ */
+
+Block *binary_search(Block *ptr) {
+	Block *current = freelist;
+	Block *last = NULL;
+	while (current != NULL) 
+	{
+		if (current == ptr) 
+		{
+			#ifdef DEBUG
+				printf("Block found\n");
+				printf("Block address: %p\n", current);
+				printf("\n");
+			#endif
+			return current;
+		}
+		last = current;
+		current = current->next;
+	}
+	#ifdef DEBUG
+		printf("Block not found\n");
+		printf("\n");
+	#endif
+	return NULL;
 }
