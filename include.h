@@ -65,12 +65,13 @@ typedef struct Block {
 void *_memcpy_avx(void *dest, const void *src, size_t n);
 void *_memset_avx(void *s, int c, size_t n);
 void *_memset_ERMS(void *s, int c, size_t n); 
+void *_memcpy_ERMS(void *dest, const void *src, size_t n);
 
 /* block utils */
 
 void coalesce_free_blocks(); 
 Block *find_free_block(Block **last, size_t size, size_t alignment); 
-void split_block(Block *block, size_t size);
+void split_block(Block *block, size_t size, size_t alignment);
 
 /* memory allocation */
 

@@ -13,14 +13,8 @@ Block *bins[BIN_COUNT] = {NULL};
 
 void *_malloc(size_t size) {
     if (__builtin_expect(size == 0, 0))
-	{
-		#ifdef DEBUG
-			printf("Invalid size, by passing %zu\n", size);
-		#endif
         return NULL;
-	}
     size = ALIGN(size, ALIGNMENT);
-
     if (size <= BIN_MAX_SIZE) 
 	{
         int bin_index = size / ALIGNMENT - 1;
@@ -57,8 +51,11 @@ void *_malloc(size_t size) {
             if (block) 
 			{
                 if (block->size >= size + BLOCK_SIZE)
-                    split_block(block, size);
-                block->free = 0;
+				{
+					printf("HHHHHHHHHHHHHHHH\n");
+                    split_block(block, size, ALIGNMENT);
+				}
+				block->free = 0;
             } 
 			else 
 			{
@@ -93,33 +90,32 @@ void *_malloc(size_t size) {
 void *_aligned_alloc(size_t alignment, size_t size) {
     if (__builtin_expect(size == 0, 0) || (alignment & (alignment - 1)) != 0)
         return NULL;
-
+    
     size = ALIGN(size, alignment);
     Block *block;
+    
+    if (size <= CACHE_SIZE_L1) {
+        _mm_prefetch(freelist, _MM_HINT_T0);
+    } else if (size <= CACHE_SIZE_L2) {
+        _mm_prefetch(freelist, _MM_HINT_T1);
+    }
 
-    if (size >= MMAP_THRESHOLD)
+    if (size >= MMAP_THRESHOLD) {
         return request_space_mmap(size, alignment);
-	else 
-	{
-        if (!freelist) 
-		{
+    } else {
+        if (!freelist) {
             block = request_space_sbrk(NULL, size, alignment);
             if (__builtin_expect(!block, 0))
                 return NULL;
             freelist = block;
-        }
-		else 
-		{
+        } else {
             Block *last = freelist;
             block = find_free_block(&last, size, alignment);
-            if (block) 
-			{
-                if (block->size >= size + BLOCK_SIZE) 
-                    split_block(block, size);
+            if (block) {
+                if (block->size >= size + BLOCK_SIZE)
+                    split_block(block, size, alignment);
                 block->free = 0;
-            }
-			else 
-			{
+            } else {
                 block = request_space_sbrk(last, size, alignment);
                 if (__builtin_expect(!block, 0))
                     return NULL;
@@ -130,43 +126,10 @@ void *_aligned_alloc(size_t alignment, size_t size) {
     uintptr_t addr = (uintptr_t)block->aligned_address;
     uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
     block->aligned_address = (void *)aligned_addr;
-	if (alignment >= 32 && __builtin_cpu_supports("avx"))
-	{
-		#ifdef DEBUG
-			printf("Allocated memory at address %p (Block %d, aligned to %zu)\n", block->aligned_address, allocated_blocks, alignment);
-			printf("Using AVX\n");
-			printf("\n");
-		#endif
-		_memset_avx(block->aligned_address, 0, size);
-	}
-	else
-	{
-		#ifdef DEBUG
-			printf("Allocated memory at address %p (Block %d, aligned to %zu)\n", block->aligned_address, allocated_blocks, alignment);
-			printf("Using ERMS\n");
-			printf("\n");
-		#endif
-		_memset_ERMS(block->aligned_address, 0, size);
-	}
-	return block->aligned_address;
-}
 
-/* void *allocate_cache(size_t size) { */
-/* 	void *ptr = _aligned_alloc(ALIGNMENT, size); */
-/* 	if (!ptr)  */
-/* 		return NULL; */
-/*  */
-/*     if (size <= CACHE_SIZE_L1)  */
-/* 	{ */
-/*         for (size_t i = 0; i < size; i += 64) */
-/*             _mm_prefetch(ptr + i, _MM_HINT_T0); */
-/*     }  */
-/* 	else if (size <= CACHE_SIZE_L2)  */
-/* 	{ */
-/*         for (size_t i = 0; i < size; i += 64) */
-/*             _mm_prefetch(ptr + i, _MM_HINT_T1); */
-/*     }  */
-/* 	else */
-/* 		_mm_prefetch(ptr, _MM_HINT_NTA);   */
-/* 	return ptr; */
-/* } */
+    if (alignment >= 32 && __builtin_cpu_supports("avx")) {
+        _memset_avx(block->aligned_address, 0, size);
+    }
+
+    return block->aligned_address;
+}

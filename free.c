@@ -17,26 +17,28 @@ extern int freed_blocks;
 	* this function is called after freeing a block
 */
 
+#define MAX_BLOCK_SIZE 1024 * 1024
+#include <assert.h>
 void coalesce_free_blocks() {
     Block *current = freelist;
-    while (current && current->next) 
-	{
-        if (current->free && current->next->free) 
-		{
+    while (current && current->next) {
+        if (current->free && current->next->free) {
             current->size += BLOCK_SIZE + current->next->size;
             current->next = current->next->next;
-        } 
-		else
+
+            uintptr_t aligned_addr = (uintptr_t)(current + 1);
+            if (aligned_addr % ALIGNMENT != 0) 
+                printf("Warning: Coalesced block not aligned at %p\n", (void *)aligned_addr);
+            #ifdef DEBUG
+                printf("Coalesced block at %p with block at %p\n", current, current->next);
+                printf("New block size: %zu\n", current->size);
+                printf("\n");
+            #endif
+        } else {
             current = current->next;
-		#ifdef DEBUG
-			printf("Coalescing free blocks\n");
-			printf("Block at %p has size %zu\n", current, current->size);
-		    check_alignment(current->aligned_address);
-		#endif
-	}
-	#ifdef DEBUG
-		printf("\n");
-	#endif
+			printf("current->size = %zu\n", current->size);
+        }
+    }
 }
 
 /*
@@ -64,14 +66,18 @@ void _free(void *ptr) {
 		freed_blocks++;
 		#ifdef DEBUG
 			printf("Freeing mmap block at %p\n", block);
+			printf("Allocated blocks: %d\n", allocated_blocks);
+			printf("Size of block: %zu\n", block->size);
+			printf("\n");
 		#endif
 	}
 	else
 	{
-
+		printf("Size of block: %zu\n", block->size);
 		block->free = 1;
 	    freed_blocks++;
 		#ifdef DEBUG
+			printf("free then coalesce_free_blocks\n");
 			printf("Block at %p has size %zu\n", block, block->size);
 			printf("Freeing block at %p\n", block);
 			printf("\n");

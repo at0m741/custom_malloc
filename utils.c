@@ -32,12 +32,23 @@ void check_alignment(void *ptr) {
 
 void hexdump(void *ptr, size_t size) {
     unsigned char *p = (unsigned char *)ptr;
-    printf("%p: ", p);
-    for (size_t i = 0; i < size; i++) 
-	{
-        printf("%02x ", p[i]);
-        if ((i + 1) % 16 == 0)
-            printf("\n%p: ", p + i + 1);
+    for (size_t i = 0; i < size; i += 16) {
+        printf("%p: ", p + i);
+
+        for (size_t j = 0; j < 16 && i + j < size; j++) {
+            printf("%02x ", p[i + j]);
+        }
+
+        for (size_t j = size - i < 16 ? 16 - (size - i) : 0; j > 0; j--) {
+            printf("   ");
+        }
+
+        printf(" |");
+        for (size_t j = 0; j < 16 && i + j < size; j++) {
+            unsigned char c = p[i + j];
+            printf("%c", (c >= 32 && c <= 126) ? c : '.');
+        }
+        printf("|\n");
     }
 	printf("\n");
 	printf("\n");

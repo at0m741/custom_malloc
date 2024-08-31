@@ -36,28 +36,41 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 */
 
 
-void split_block(Block *block, size_t size) {
-	if (block->size > size + BLOCK_SIZE) 
-	{
-		Block *new_block = (Block *)((char *)block + BLOCK_SIZE + size);
-		new_block->size = block->size - size - BLOCK_SIZE;
-		new_block->free = 1;
-		new_block->next = block->next;
-		block->size = size;
-		block->next = new_block;
-		#ifdef DEBUG
-			printf("Splitting block at %p into blocks of size %zu and %zu\n", block, block->size, new_block->size);
-		#endif
-	}
-	else 
-	{
-		#ifdef DEBUG
-			printf("Splitting block at %p into blocks of size %zu and %d\n", block, block->size, 0);
-			printf("Block size is less than requested size\n");
-			printf("\n");
-		#endif
-	}
+
+inline void split_block(Block *block, size_t size, size_t alignment) {
+    size_t remaining_size = block->size - size - BLOCK_SIZE;
+#ifdef DEBUG
+	printf("Splitting block\n");
+	printf("Block size: %zu\n", block->size);
+	printf("Remaining size: %zu\n", remaining_size);
+	check_alignment(block->aligned_address);
+	printf("\n");
+#endif
+    if (remaining_size > BLOCK_SIZE) {
+        uintptr_t new_block_address = (uintptr_t)block + BLOCK_SIZE + size;
+        uintptr_t aligned_new_block_address = (new_block_address + alignment - 1) & ~(alignment - 1);
+        size_t wasted_space = aligned_new_block_address - new_block_address;
+
+        remaining_size -= wasted_space;
+        if (remaining_size > BLOCK_SIZE) {
+            Block *new_block = (Block *)aligned_new_block_address;
+            new_block->size = remaining_size;
+            new_block->free = 1;
+            new_block->next = block->next;
+            block->size = size;
+            block->next = new_block;
+        }
+    }
+#ifdef DEBUG
+	printf("Splitting block\n");
+	printf("Block size: %zu\n", block->size);
+	printf("Remaining size: %zu\n", remaining_size);
+	check_alignment(block->aligned_address);
+	printf("\n");
+#endif
+
 }
+
 
 /*
 	* this function call sbrk to allocate memory

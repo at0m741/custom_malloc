@@ -1,7 +1,7 @@
 NAME = custom_alloc
 CC = clang
 
-CFLAGS = -g -mavx2
+CFLAGS = -g -mavx2 -fsanitize=address -fsanitize=leak  
 
 SRC = $(wildcard *.c)
 
