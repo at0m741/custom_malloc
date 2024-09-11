@@ -5,6 +5,11 @@ extern size_t block_size;
 extern int allocated_blocks;
 extern int freed_blocks;
 
+
+/* void log_block(Block *block) { */
+/*    (void)block;  */
+/* } */
+
 int count_blocks(Block *list) {
 	Block *current = list;
 	int count = 0;

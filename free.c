@@ -19,27 +19,25 @@ extern int freed_blocks;
 
 #define MAX_BLOCK_SIZE 1024 * 1024
 #include <assert.h>
+
 void coalesce_free_blocks() {
     Block *current = freelist;
     while (current && current->next) {
         if (current->free && current->next->free) {
-            current->size += BLOCK_SIZE + current->next->size;
+            current->size += current->next->size + BLOCK_SIZE;
             current->next = current->next->next;
-
-            uintptr_t aligned_addr = (uintptr_t)(current + 1);
-            if (aligned_addr % ALIGNMENT != 0) 
-                printf("Warning: Coalesced block not aligned at %p\n", (void *)aligned_addr);
-            #ifdef DEBUG
-                printf("Coalesced block at %p with block at %p\n", current, current->next);
-                printf("New block size: %zu\n", current->size);
-                printf("\n");
-            #endif
         } else {
             current = current->next;
-			printf("current->size = %zu\n", current->size);
         }
     }
+
+	#ifdef DEBUG
+		printf("Coalescing free blocks\n");
+		printf("size of block: %zu\n", current->size);
+		printf("\n");
+	#endif
 }
+
 
 /*
 	* Function to free a block of memory
@@ -51,37 +49,61 @@ void coalesce_free_blocks() {
 	* the free flag is set to 1
 	* the number of freed blocks is incremented
 */
+void log_block(Block *block) {
+    if (!block) {
+        printf("Erreur: tentative d'accès à un bloc NULL\n");
+        return;
+    }
+
+    // Vérifiez la taille du bloc avant d'y accéder
+    if (block->size == 0 || block->size > MAX_BLOCK_SIZE) {
+        printf("Erreur: bloc corrompu ou taille invalide à l'adresse %p\n", block);
+        return;
+    }
+
+    printf("Block at %p: size = %zu, free = %d\n", block, block->size, block->free);
+}
 
 void _free(void *ptr) {
-
     if (__builtin_expect(ptr == NULL, 0)){
-	
-		return;
-	}
-	Block *block = (Block *)ptr - 1;
-	if (block->is_mmap)
-	{
-		munmap(block, block->size + sizeof(Block));
-		allocated_blocks--;
-		freed_blocks++;
-		#ifdef DEBUG
-			printf("Freeing mmap block at %p\n", block);
-			printf("Allocated blocks: %d\n", allocated_blocks);
-			printf("Size of block: %zu\n", block->size);
-			printf("\n");
-		#endif
-	}
-	else
-	{
-		printf("Size of block: %zu\n", block->size);
-		block->free = 1;
-	    freed_blocks++;
-		#ifdef DEBUG
-			printf("free then coalesce_free_blocks\n");
-			printf("Block at %p has size %zu\n", block, block->size);
-			printf("Freeing block at %p\n", block);
-			printf("\n");
-		#endif
-		coalesce_free_blocks();
-	}
+        return;
+    }
+
+    Block *block = (Block *)((char *)ptr - sizeof(Block));
+    assert(block != NULL);
+
+    if (block->free) {
+        fprintf(stderr, "Erreur: tentative de libérer un bloc déjà libéré à l'adresse %p\n", block);
+        return;
+    }
+
+    log_block(block);
+
+    if (block->is_mmap) {
+        munmap(block, block->size + sizeof(Block));
+        allocated_blocks--;
+        freed_blocks++;
+        #ifdef DEBUG
+            printf("Freeing mmap block at %p\n", block);
+            printf("Allocated blocks: %d\n", allocated_blocks);
+            printf("Size of block: %zu\n", block->size);
+            printf("\n");
+        #endif
+        return;  // Sortir après munmap
+    }
+
+    // Sbrk block
+    printf("Size of block: %zu\n", block->size);
+    block->free = 1;
+    freed_blocks++;
+    
+    #ifdef DEBUG
+        printf("free then coalesce_free_blocks\n");
+        printf("Block at %p has size %zu\n", block, block->size);
+        printf("Freeing block at %p\n", block);
+        printf("\n");
+    #endif
+
+    coalesce_free_blocks();
+    log_block(block);
 }
