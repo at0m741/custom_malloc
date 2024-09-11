@@ -53,11 +53,13 @@ void coalesce_free_blocks() {
 
 void _free(void *ptr) {
 
-    if (__builtin_expect(ptr == NULL, 0)){
-	
+    if (__builtin_expect(ptr == NULL, 0))
 		return;
-	}
+
 	Block *block = (Block *)ptr - 1;
+	if (block->size == 0)
+		return;
+	printf("block->size = %zu\n", block->size);
 	if (block->is_mmap)
 	{
 		munmap(block, block->size + sizeof(Block));

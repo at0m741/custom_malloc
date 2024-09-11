@@ -4,6 +4,7 @@ Block *freelist = NULL;
 int allocated_blocks = 0;
 int freed_blocks = 0;
 Block *bins[BIN_COUNT] = {NULL};
+Block *is_mmap = NULL;
 
 /*
 	* this is the custom malloc function
@@ -15,6 +16,8 @@ void *_malloc(size_t size) {
     if (__builtin_expect(size == 0, 0))
         return NULL;
     size = ALIGN(size, ALIGNMENT);
+
+    Block *block = NULL;
     if (size <= BIN_MAX_SIZE) 
 	{
         int bin_index = size / ALIGNMENT - 1;
@@ -32,7 +35,6 @@ void *_malloc(size_t size) {
         }
     }
 
-    Block *block;
     if (size >= MMAP_THRESHOLD)
         return request_space_mmap(size, ALIGNMENT);
 	else
@@ -88,7 +90,7 @@ void *_aligned_alloc(size_t alignment, size_t size) {
         return NULL;
     
     size = ALIGN(size, alignment);
-    Block *block;
+    Block *block = NULL;
     
     if (size <= CACHE_SIZE_L1) {
         _mm_prefetch(freelist, _MM_HINT_T0);

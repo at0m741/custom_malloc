@@ -141,7 +141,6 @@ void *request_space_mmap(size_t size, size_t alignment) {
     block->next = NULL;
     block->free = 0;
 	block->is_mmap = 1;
-	printf("DEBUUUUUG block->size = %zu\n", block->size);
     void *aligned_addr = (void *)ALIGN((uintptr_t)(block + 1), alignment);
     block->aligned_address = aligned_addr;
 
