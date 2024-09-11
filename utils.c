@@ -40,11 +40,11 @@ void hexdump(void *ptr, size_t size) {
     for (size_t i = 0; i < size; i += 16) {
         printf("%p: ", p + i);
 
-        for (size_t j = 0; j < 16 && i + j < size; j++) {
-            printf("%02x ", p[i + j]);
-        }
+		for (size_t j = 0; j < 16 && i + j < size; j++) {
+			printf("%02x ", p[i + j]);
+		}
 
-        for (size_t j = size - i < 16 ? 16 - (size - i) : 0; j > 0; j--) {
+		for (size_t j = size - i < 16 ? 16 - (size - i) : 0; j > 0; j--) {
             printf("   ");
         }
 
@@ -55,11 +55,5 @@ void hexdump(void *ptr, size_t size) {
         }
         printf("|\n");
     }
-	printf("\n");
-	printf("\n");
-	printf("Size of the memory block: %lu bytes\n", size);
-	printf("Address of the memory block: %p\n", ptr);
-	printf("Number of blocks allocated: %d\n", count_blocks(freelist));
-
 	printf("\n");
 }

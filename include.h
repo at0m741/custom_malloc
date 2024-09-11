@@ -86,5 +86,5 @@ void _free(void *ptr);
 
 void check_for_leaks();
 void hexdump(void *ptr, size_t size);
-void log_block(Block *block); 
+
 #endif

@@ -50,11 +50,7 @@ void *_malloc(size_t size) {
             block = find_free_block(&last, size, ALIGNMENT);
             if (block) 
 			{
-                if (block->size >= size + BLOCK_SIZE)
-				{
-					printf("HHHHHHHHHHHHHHHH\n");
-                    split_block(block, size, ALIGNMENT);
-				}
+
 				block->free = 0;
             } 
 			else 
@@ -65,6 +61,7 @@ void *_malloc(size_t size) {
             }
         }
     }
+
     return block->aligned_address;
 }
 

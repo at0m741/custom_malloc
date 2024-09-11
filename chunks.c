@@ -12,23 +12,21 @@ extern int allocated_blocks;
 	* Returns: pointer to the allocated memory
 */
 
-static Block *last_alloc = NULL; // Garde en mémoire le dernier bloc utilisé
-
 Block *find_free_block(Block **last, size_t size, size_t alignment) {
-    Block *current = last_alloc ? last_alloc : freelist;
-    while (current && !(current->free && current->size >= size)) {
+	if (__builtin_expect(freelist == NULL, 0 || size == 0))
+		return NULL;
+
+    Block *current = freelist;
+    while (current && !(current->free && current->size >= size)) 
+	{
         *last = current;
         current = current->next;
-		printf("DEBUG size of block = %zu\n", size);
+		#ifdef DEBUG
+			printf("Searching for free block\n");
+			printf("Current block: %p\n", current);
+			printf("\n");
+		#endif
     }
-    if (!current) {
-        current = freelist;
-        while (current && !(current->free && current->size >= size)) {
-            *last = current;
-            current = current->next;
-        }
-    }
-    last_alloc = current; // Mémorise la dernière position
     return current;
 }
 
@@ -43,14 +41,11 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 
 
 inline void split_block(Block *block, size_t size, size_t alignment) {
+	if (__builtin_expect(block->size < size, 0))
+		return;
+
     size_t remaining_size = block->size - size - BLOCK_SIZE;
-#ifdef DEBUG
-	printf("Splitting block\n");
-	printf("DEBUG SPLIT Block size 1: %zu\n", block->size);
-	printf("Remaining size: %zu\n", remaining_size);
-	check_alignment(block->aligned_address);
-	printf("\n");
-#endif
+
     if (remaining_size > BLOCK_SIZE) {
         uintptr_t new_block_address = (uintptr_t)block + BLOCK_SIZE + size;
         uintptr_t aligned_new_block_address = (new_block_address + alignment - 1) & ~(alignment - 1);
@@ -60,6 +55,7 @@ inline void split_block(Block *block, size_t size, size_t alignment) {
         if (remaining_size > BLOCK_SIZE) {
             Block *new_block = (Block *)aligned_new_block_address;
             new_block->size = remaining_size;
+			printf("new_block->size = %zu\n", new_block->size);
             new_block->free = 1;
             new_block->next = block->next;
             block->size = size;
@@ -68,11 +64,12 @@ inline void split_block(Block *block, size_t size, size_t alignment) {
     }
 #ifdef DEBUG
 	printf("Splitting block\n");
-	printf("DEBUG SPLIT Block size 2: %zu\n", block->size);
+	printf("Block size: %zu\n", block->size);
 	printf("Remaining size: %zu\n", remaining_size);
 	check_alignment(block->aligned_address);
 	printf("\n");
 #endif
+
 }
 
 
@@ -87,6 +84,8 @@ inline void split_block(Block *block, size_t size, size_t alignment) {
 
 Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
     Block *block = sbrk(0);
+	if (__builtin_expect(block == (void *)-1, 0))
+		return NULL;
 	#ifdef DEBUG
 		printf("Requesting space with sbrk\n");
 		printf("Requested size: %zu\n", size);
@@ -98,6 +97,7 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
     block->size = size;
     block->next = NULL;
     block->free = 0;
+	block->is_mmap = 0;
     void *aligned_addr = (void *)ALIGN((uintptr_t)(block + 1), alignment);
     block->aligned_address = aligned_addr;
 
@@ -108,7 +108,6 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
 	#ifdef DEBUG
 		printf("Allocated memory at address %p\n", block->aligned_address);
 	    printf("Allocated blocks: %d\n", allocated_blocks);
-		printf("DEBUG REQUEST SBRK block size = %zu\n", block->size);
 		check_alignment(block->aligned_address);
 		printf("\n");
 	#endif
@@ -124,10 +123,14 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
 
 
 void *request_space_mmap(size_t size, size_t alignment) {
+	if (__builtin_expect(size == 0, 0))
+		return NULL;
     size_t total_size = size + BLOCK_SIZE + alignment;
 	#ifdef DEBUG
 		printf("Requesting space with mmap\n");
 	#endif
+	if (size == 0)
+		return NULL;
     void *mapped_memory = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                                MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (mapped_memory == MAP_FAILED)
@@ -138,6 +141,7 @@ void *request_space_mmap(size_t size, size_t alignment) {
     block->next = NULL;
     block->free = 0;
 	block->is_mmap = 1;
+	printf("DEBUUUUUG block->size = %zu\n", block->size);
     void *aligned_addr = (void *)ALIGN((uintptr_t)(block + 1), alignment);
     block->aligned_address = aligned_addr;
 
@@ -145,39 +149,9 @@ void *request_space_mmap(size_t size, size_t alignment) {
 	#ifdef DEBUG
 		printf("Allocated memory at address %p\n", block->aligned_address);
 	    printf("Allocated blocks: %d\n", allocated_blocks);	
-		printf("DEBUG REQUEST MMAP block size = %zu\n", block->size);
 		check_alignment(block->aligned_address);
 		printf("\n");
 	#endif
     return block->aligned_address;
 }
 
-/*
-	* function to binary search for a block in the freelist
-	* ptr: pointer to the memory block
-	* Returns: pointer to the block
-*/
-
-Block *binary_search(Block *ptr) {
-	Block *current = freelist;
-	Block *last = NULL;
-	while (current != NULL) 
-	{
-		if (current == ptr) 
-		{
-			#ifdef DEBUG
-				printf("Block found\n");
-				printf("Block address: %p\n", current);
-				printf("\n");
-			#endif
-			return current;
-		}
-		last = current;
-		current = current->next;
-	}
-	#ifdef DEBUG
-		printf("Block not found\n");
-		printf("\n");
-	#endif
-	return NULL;
-}
