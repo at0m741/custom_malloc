@@ -7,7 +7,10 @@
 #include <sys/mman.h>
 #include <immintrin.h>
 #include <string.h>
-
+#include <errno.h>
+#include <stdint.h>
+#include <sys/syscall.h>
+#include <stdarg.h>
 
 /*
 	* ALIGNMENT: alignment of the block 
@@ -30,6 +33,21 @@
 #define BIN_MAX_SIZE 128
 #define CACHE_SIZE_L1 32768
 #define CACHE_SIZE_L2 262144
+
+typedef enum {
+	NO_CACHE = 0,
+	L1_CACHE = 1,
+	L2_CACHE = 2,
+	L3_CACHE = 3
+} CacheLevel;
+
+#define CACHE_LEVEL
+
+typedef enum {
+	TINY = 0,
+	SMALL = 1,
+	LARGE = 2	
+} BinType;
 
 /* 
 	* get cache level 
@@ -86,7 +104,9 @@ void _free(void *ptr);
 
 /* memory leak detection and utils */
 
+long _syscall(long number, ...);
 void check_for_leaks();
+void* _sbrk(intptr_t increment);
 /* void hexdump(void *ptr, size_t size); */
 
 #endif
