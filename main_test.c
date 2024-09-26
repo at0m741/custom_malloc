@@ -25,6 +25,7 @@ char *ft_strdup(const char *s) {
 	return new;
 }
 
+#include <time.h>
 
 int main() {
 	printf("-------------------- malloc --------------------\n");
@@ -150,6 +151,37 @@ int main() {
 	char *dup_str = ft_strdup(str);
 	printf("len: %d\n", ft_strlen(dup_str));
 	_free(dup_str);
+
+	printf("-------------------- benchmark --------------------\n");
 	
+	clock_t start, end;
+	double cpu_time_used;
+	int *ptr8 = (int *)_malloc(sizeof(int) * 1000000);
+	start = clock();
+	for (int i = 0; i < 1000000; i++)
+		ptr8[i] = i;
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken to write 1,000,000 integers using custom malloc: %f seconds\n", cpu_time_used);
+	_free(ptr8);
+
+	int *ptr9 = (int *)malloc(sizeof(int) * 1000000);
+	start = clock();
+	for (int i = 0; i < 1000000; i++)
+		ptr9[i] = i;
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken to write 1,000,000 integers using malloc: %f seconds\n", cpu_time_used);
+	free(ptr9);
+	
+	int *ptraligned = (int *)_aligned_alloc(32, sizeof(int) * 1000000);
+	start = clock();
+	for (int i = 0; i < 1000000; i++)
+		ptraligned[i] = i;
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken to write 1,000,000 integers using custom aligned_alloc: %f seconds\n", cpu_time_used);
+	check_for_leaks();
+
     return 0;
 }
