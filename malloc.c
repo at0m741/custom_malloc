@@ -12,51 +12,47 @@ Block *is_mmap = NULL;
 	* Returns: pointer to the allocated memory
 */	
 
+#include <string.h> // Pour memset
+
 void *_malloc(size_t size) {
     if (__builtin_expect(size == 0, 0))
         return NULL;
     size = ALIGN(size, ALIGNMENT);
 
     Block *block = NULL;
-    if (size <= BIN_MAX_SIZE) 
-	{
+    if (size <= BIN_MAX_SIZE) {
         int bin_index = size / ALIGNMENT - 1;
-        if (bin_index >= 0 && bin_index < BIN_COUNT && bins[bin_index]) 
-		{
+        if (bin_index >= 0 && bin_index < BIN_COUNT && bins[bin_index]) {
             #if DEBUG
-				printf("Allocating from bin %d\n", bin_index);
-				printf("Block size: %zu\n", size);
-				printf("\n");
+                printf("Allocating from bin %d\n", bin_index);
+                printf("Block size: %zu\n", size);
+                printf("\n");
             #endif
             Block *block = bins[bin_index];
             bins[bin_index] = block->next;
             block->free = 0;
+            _memset_avx(block->aligned_address, 0, size);
             return block->aligned_address;
         }
     }
 
     if (size >= MMAP_THRESHOLD)
         return request_space_mmap(size, ALIGNMENT);
-	else
-	{
-        if (!freelist) 
-		{
+    else {
+        if (!freelist) {
             block = request_space_sbrk(NULL, size, ALIGNMENT);
             if (__builtin_expect(!block, 0))
                 return NULL;
             freelist = block;
-        } 
-		else 
-		{
+        } else {
             Block *last = freelist;
             block = find_free_block(&last, size, ALIGNMENT);
-            if (block) 
-			{
-
-				block->free = 0;
-            } 
-			else 
-			{
+            if (block) {
+                if (block->size >= size + BLOCK_SIZE)
+                    split_block(block, size, ALIGNMENT);
+                block->free = 0;
+                _memset_avx(block->aligned_address, 0, size);
+            } else {
                 block = request_space_sbrk(last, size, ALIGNMENT);
                 if (__builtin_expect(!block, 0))
                     return NULL;
@@ -66,24 +62,6 @@ void *_malloc(size_t size) {
 
     return block->aligned_address;
 }
-
-
-/*
-	* this is the custom aligned malloc function 
-	* alignment: alignment of the memory to be allocated
-	* size: size of the memory to be allocated
-	* Returns: pointer to the allocated memory
-	*
-	* This function is used to allocate memory with a specific alignment
-	* principaly used for SIMD instructions (SSE, AVX, etc.)
-	* The function will allocate a block of memory with a size greater than the requested size
-	* The function will then align the memory to the requested alignment
-	* The function will then return the aligned memory
-	* The function will use sbrk to allocate memory if the requested size is larger than the block size
-	* The function will use mmap to allocate memory if the requested size is larger than the mmap threshold
-	*
-*/
-
 
 void *_aligned_alloc(size_t alignment, size_t size) {
     if (__builtin_expect(size == 0, 0) || (alignment & (alignment - 1)) != 0)
@@ -97,7 +75,9 @@ void *_aligned_alloc(size_t alignment, size_t size) {
     } else if (size <= CACHE_SIZE_L2) {
         _mm_prefetch(freelist, _MM_HINT_T1);
     }
-
+	#if DEBUG
+		printf("Allocating %zu bytes with alignment %zu\n", size, alignment);
+	#endif
     if (size >= MMAP_THRESHOLD) {
         return request_space_mmap(size, alignment);
     } else {
@@ -113,6 +93,7 @@ void *_aligned_alloc(size_t alignment, size_t size) {
                 if (block->size >= size + BLOCK_SIZE)
                     split_block(block, size, alignment);
                 block->free = 0;
+                memset(block->aligned_address, 0, size); 
             } else {
                 block = request_space_sbrk(last, size, alignment);
                 if (__builtin_expect(!block, 0))

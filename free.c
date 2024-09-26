@@ -51,38 +51,38 @@ void coalesce_free_blocks() {
 	* the number of freed blocks is incremented
 */
 
+#include <assert.h>
+
 void _free(void *ptr) {
-
     if (__builtin_expect(ptr == NULL, 0))
-		return;
+        return;
 
-	Block *block = (Block *)ptr - 1;
-	if (block->size == 0)
-		return;
-	printf("block->size = %zu\n", block->size);
-	if (block->is_mmap)
-	{
-		munmap(block, block->size + sizeof(Block));
-		allocated_blocks--;
-		freed_blocks++;
-		#ifdef DEBUG
-			printf("Freeing mmap block at %p\n", block);
-			printf("Allocated blocks: %d\n", allocated_blocks);
-			printf("Size of block: %zu\n", block->size);
-			printf("\n");
-		#endif
-	}
-	else
-	{
-		block->free = 1;
-		block->is_mmap = 0;
-	    freed_blocks++;
-		#ifdef DEBUG
-			printf("free then coalesce_free_blocks\n");
-			printf("Block at %p has size %zu\n", block, block->size);
-			printf("Freeing block at %p\n", block);
-			printf("\n");
-		#endif
-		coalesce_free_blocks();
-	}
+    Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
+    assert(block != NULL);
+    assert(block->aligned_address == ptr);
+    assert(block->size > 0);
+
+    printf("block->size = %zu\n", block->size);
+    if (block->is_mmap) {
+        munmap((void *)block, block->size + sizeof(Block));
+        freed_blocks++;
+        #ifdef DEBUG
+            printf("Freeing mmap block at %p\n", block);
+            printf("Allocated blocks: %d\n", allocated_blocks);
+            printf("Size of block: %zu\n", block->size);
+            printf("\n");
+        #endif
+    } else {
+        block->free = 1;
+        block->is_mmap = 0;
+        freed_blocks++;
+        #ifdef DEBUG
+            printf("free then coalesce_free_blocks\n");
+            printf("Block at %p has size %zu\n", block, block->size);
+            printf("Freeing block at %p\n", block);
+			printf("freed_blocks = %d\n", freed_blocks);
+            printf("\n");
+        #endif
+        coalesce_free_blocks();
+    }
 }

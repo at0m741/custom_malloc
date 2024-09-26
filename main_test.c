@@ -32,10 +32,10 @@ int main() {
     int *ptr2 = (int *)_malloc(sizeof(int) * 20);
     int *ptr3 = (int *)_malloc(sizeof(int) * 30);
 
-    if (ptr1 == NULL || ptr2 == NULL || ptr3 == NULL) {
-        printf("Allocation failed\n");
-        return 1;
-    }
+    /* if (ptr1 == NULL || ptr2 == NULL || ptr3 == NULL) { */
+    /*     printf("Allocation failed\n"); */
+    /*     return 1; */
+    /* } */
 
     printf("Number of blocks allocated: %d\n", allocated_blocks);
 
@@ -76,6 +76,22 @@ int main() {
     hexdump(large_ptr, large_size / 1024);
 	printf("\n");
 	
+
+	printf("-------------------- aligned_alloc (taille non multiple) --------------------\n");
+	void *ptr_aligned_non_multiple = _aligned_alloc(32, 18); 
+	if (ptr_aligned_non_multiple == NULL) {
+		printf("Allocation failed\n");
+	} else {
+		printf("Aligned memory at address %p\n", ptr_aligned_non_multiple);
+		hexdump(ptr_aligned_non_multiple, 18);
+		_free(ptr_aligned_non_multiple);
+	}
+	/* printf("-------------------- intentional memory leak --------------------\n"); */
+	/* int *leak_ptr = (int *)_malloc(sizeof(int) * 5); */
+	/* // Intentionally not freeing leak_ptr to simulate a memory leak */
+	/* check_for_leaks(); */
+	/* _free(leak_ptr); */
+	printf("\n");
 	printf("-------------------- aligned_alloc --------------------\n");
 	int *ptr5 = (int *)_aligned_alloc(32, sizeof(int) * 10);
 	if (ptr5 == NULL) {

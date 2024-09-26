@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <sys/mman.h>
 #include <immintrin.h>
+#include <string.h>
+
 
 /*
 	* ALIGNMENT: alignment of the block 
@@ -85,6 +87,6 @@ void _free(void *ptr);
 /* memory leak detection and utils */
 
 void check_for_leaks();
-void hexdump(void *ptr, size_t size);
+/* void hexdump(void *ptr, size_t size); */
 
 #endif
