@@ -45,7 +45,10 @@ int main() {
     printf("Allocated memory at address %p (Block 2)\n", ptr2);
     printf("Allocated memory at address %p (Block 3)\n", ptr3);
     printf("\n");
-
+	if (ptr1 == NULL || ptr2 == NULL || ptr3 == NULL) {
+		printf("Allocation failed\n");
+		return 1;
+	}
     for (int i = 0; i < 10; i++)
         ptr1[i] = i;
     for (int i = 0; i < 20; i++)
@@ -156,32 +159,52 @@ int main() {
 	
 	clock_t start, end;
 	double cpu_time_used;
-	int *ptr8 = (int *)_malloc(sizeof(int) * 1000000);
 	start = clock();
+	int *ptr8 = (int *)_malloc(sizeof(int) * 1000000);
 	for (int i = 0; i < 1000000; i++)
 		ptr8[i] = i;
 	end = clock();
 	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
 	printf("Time taken to write 1,000,000 integers using custom malloc: %f seconds\n", cpu_time_used);
+	printf("number of blocks allocated: %d\n", allocated_blocks);
 	_free(ptr8);
 
-	int *ptr9 = (int *)malloc(sizeof(int) * 1000000);
 	start = clock();
+	int *ptr9 = (int *)malloc(sizeof(int) * 1000000);
 	for (int i = 0; i < 1000000; i++)
 		ptr9[i] = i;
 	end = clock();
 	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
 	printf("Time taken to write 1,000,000 integers using malloc: %f seconds\n", cpu_time_used);
+	printf("number of blocks allocated: %d\n", allocated_blocks);
 	free(ptr9);
 	
-	int *ptraligned = (int *)_aligned_alloc(32, sizeof(int) * 1000000);
 	start = clock();
+	int *ptraligned = (int *)_aligned_alloc(32, sizeof(int) * 1000000);
 	for (int i = 0; i < 1000000; i++)
 		ptraligned[i] = i;
 	end = clock();
 	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
 	printf("Time taken to write 1,000,000 integers using custom aligned_alloc: %f seconds\n", cpu_time_used);
+	_free(ptraligned);
 	check_for_leaks();
+
+	start = clock();
+	for (int i = 0; i < 1000; i++)
+	{
+		int *ptr10 = (int *)_malloc(sizeof(int));
+		*ptr10 = i;
+		_free(ptr10);
+	}
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken to write 1,000,000 integers using malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
+	check_for_leaks();
+	hexdump(freelist, 1000);
+	printf("-------------------- end --------------------\n");
+	printf("Number of blocks allocated: %d\n", allocated_blocks);
+	printf("Number of blocks freed: %d\n", freed_blocks);
+
 
     return 0;
 }

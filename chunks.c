@@ -21,11 +21,11 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 	{
         *last = current;
         current = current->next;
-		#ifdef DEBUG
-			printf("Searching for free block\n");
-			printf("Current block: %p\n", current);
-			printf("\n");
-		#endif
+		/* #ifdef DEBUG */
+		/* 	printf("Searching for free block\n"); */
+		/* 	printf("Current block: %p\n", current); */
+		/* 	printf("\n"); */
+		/* #endif */
     }
     return current;
 }
@@ -85,21 +85,47 @@ inline void split_block(Block *block, size_t size, size_t alignment) {
 
 
 
-Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
-    size_t total_size = size + sizeof(Block) + alignment - 1;
-    void *request = _sbrk(total_size);
-    if (request == (void *)-1)
+
+Block *request_space(Block *last, size_t size, size_t alignment) {
+    if (size == 0)
         return NULL;
 
-    uintptr_t raw_addr = (uintptr_t)request;
-    uintptr_t aligned_addr = ALIGN(raw_addr + sizeof(Block), alignment);
-    Block *block = (Block *)(aligned_addr - sizeof(Block));
+    if ((alignment & (alignment - 1)) != 0) {
+        fprintf(stderr, "Error: Alignment must be a power of two.\n");
+        return NULL;
+    }
 
+    size_t alignment_mask = alignment - 1;
+    size_t total_size = size + sizeof(Block) + sizeof(Block *) + alignment_mask;
+
+    size_t page_size = sysconf(_SC_PAGESIZE);
+    total_size = (total_size + page_size - 1) & ~(page_size - 1);
+
+    void *request = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (request == MAP_FAILED) {
+        perror("mmap failed");
+        return NULL;
+    }
+
+    uintptr_t raw_addr = (uintptr_t)request;
+    uintptr_t aligned_addr = (raw_addr + sizeof(Block) + sizeof(Block *) + alignment_mask) & ~alignment_mask;
+
+    if (aligned_addr + size > raw_addr + total_size) {
+        munmap(request, total_size);
+        fprintf(stderr, "Error: Aligned address exceeds allocated memory.\n");
+        return NULL;
+    }
+
+    Block *block = (Block *)(raw_addr);
     block->size = size;
     block->free = 0;
-    block->is_mmap = 0;
+    block->is_mmap = 1;
     block->next = NULL;
     block->aligned_address = (void *)aligned_addr;
+
+    Block **back_ptr = (Block **)(aligned_addr - sizeof(Block *));
+    *back_ptr = block;
 
     if (last) {
         last->next = block;
@@ -110,17 +136,17 @@ Block *request_space_sbrk(Block *last, size_t size, size_t alignment) {
     allocated_blocks++;
 
     #ifdef DEBUG
-        printf("Allocated memory at address %p\n", block->aligned_address);
+        printf("Allocated memory at address %p using mmap\n", block->aligned_address);
+        printf("Block stored at %p\n", (void *)block);
+        printf("Back pointer stored at %p\n", (void *)back_ptr);
         printf("Allocated blocks: %d\n", allocated_blocks);
-        check_alignment(block->aligned_address);
         printf("\n");
-		#endif
+    #endif
 
     memset(block->aligned_address, 0, size);
 
     return block;
 }
-
 /*
 	* this function call mmap to allocate memory
 	* size: size of the memory to be allocated

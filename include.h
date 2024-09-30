@@ -96,17 +96,16 @@ void split_block(Block *block, size_t size, size_t alignment);
 /* memory allocation */
 
 void *request_space_mmap(size_t size, size_t alignment);
-Block *request_space_sbrk(Block *last, size_t size, size_t alignment);
+Block *request_space(Block *last, size_t size, size_t alignment);
 void check_alignment(void *aligned_address);
 void *_malloc(size_t size);
 void *_aligned_alloc(size_t alignment, size_t size);
 void _free(void *ptr);
-
 /* memory leak detection and utils */
 
 long _syscall(long number, ...);
 void check_for_leaks();
 void* _sbrk(intptr_t increment);
-/* void hexdump(void *ptr, size_t size); */
+void hexdump(void *ptr, size_t size);
 
 #endif

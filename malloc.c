@@ -39,7 +39,7 @@ void *_malloc(size_t size) {
         return request_space_mmap(size, ALIGNMENT);
     else {
         if (!freelist) {
-            block = request_space_sbrk(NULL, size, ALIGNMENT);
+            block = request_space(NULL, size, ALIGNMENT);
             if (__builtin_expect(!block, 0))
                 return NULL;
             freelist = block;
@@ -52,12 +52,13 @@ void *_malloc(size_t size) {
                 block->free = 0;
                 _memset_avx(block->aligned_address, 0, size);
             } else {
-                block = request_space_sbrk(last, size, ALIGNMENT);
+                block = request_space(last, size, ALIGNMENT);
                 if (__builtin_expect(!block, 0))
                     return NULL;
             }
         }
     }
+	_memset_avx(block->aligned_address, 0, size);
 
     return block->aligned_address;
 }
