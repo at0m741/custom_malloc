@@ -43,29 +43,33 @@ long _syscall(long number, ...) {
     return ret;
 }
 
+
+#ifdef TINY_ALLOC
+
 void* _sbrk(intptr_t increment) {
-    static uintptr_t current_brk = 0;
-    uintptr_t new_brk;
-    void* result;
+	static uintptr_t current_brk = 0;
+	uintptr_t new_brk;
+	void* result;
 
-    if (current_brk == 0) {
-        result = (void*)_syscall(SYS_brk, 0);
-        current_brk = (uintptr_t)result;
-        if (current_brk == (uintptr_t)-1) {
-            errno = ENOMEM;
-            return (void*)-1;
-        }
-    }
+	if (current_brk == 0) {
+		result = (void*)_syscall(SYS_brk, 0);
+		current_brk = (uintptr_t)result;
+		if (current_brk == (uintptr_t)-1) {
+			errno = ENOMEM;
+			return (void*)-1;
+		}
+	}
 
-    new_brk = current_brk + increment;
-    result = (void*)_syscall(SYS_brk, new_brk);
-    if ((uintptr_t)result == (uintptr_t)-1) {
-        errno = ENOMEM;
-        return (void*)-1;
-    }
+	new_brk = current_brk + increment;
+	result = (void*)_syscall(SYS_brk, new_brk);
+	if ((uintptr_t)result == (uintptr_t)-1) {
+		errno = ENOMEM;
+		return (void*)-1;
+	}
 
-    void* old_brk = (void*)current_brk;
-    current_brk = new_brk;
+	void* old_brk = (void*)current_brk;
+	current_brk = new_brk;
 
-    return old_brk;
+	return old_brk;
 }
+#endif

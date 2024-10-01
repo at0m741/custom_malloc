@@ -101,6 +101,7 @@ void check_alignment(void *aligned_address);
 void *_malloc(size_t size);
 void *_aligned_alloc(size_t alignment, size_t size);
 void _free(void *ptr);
+void *_realloc(void *ptr, size_t new_size); 
 /* memory leak detection and utils */
 
 long _syscall(long number, ...);

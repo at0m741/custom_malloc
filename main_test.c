@@ -25,6 +25,7 @@ char *ft_strdup(const char *s) {
 	return new;
 }
 
+
 #include <time.h>
 
 int main() {
@@ -33,10 +34,6 @@ int main() {
     int *ptr2 = (int *)_malloc(sizeof(int) * 20);
     int *ptr3 = (int *)_malloc(sizeof(int) * 30);
 
-    /* if (ptr1 == NULL || ptr2 == NULL || ptr3 == NULL) { */
-    /*     printf("Allocation failed\n"); */
-    /*     return 1; */
-    /* } */
 
     printf("Number of blocks allocated: %d\n", allocated_blocks);
 
@@ -90,11 +87,10 @@ int main() {
 		hexdump(ptr_aligned_non_multiple, 18);
 		_free(ptr_aligned_non_multiple);
 	}
-	/* printf("-------------------- intentional memory leak --------------------\n"); */
-	/* int *leak_ptr = (int *)_malloc(sizeof(int) * 5); */
-	/* // Intentionally not freeing leak_ptr to simulate a memory leak */
-	/* check_for_leaks(); */
-	/* _free(leak_ptr); */
+	printf("-------------------- intentional memory leak --------------------\n");
+	int *leak_ptr = (int *)_malloc(sizeof(int) * 100);
+	check_for_leaks();
+	_free(leak_ptr);
 	printf("\n");
 	printf("-------------------- aligned_alloc --------------------\n");
 	int *ptr5 = (int *)_aligned_alloc(32, sizeof(int) * 10);
@@ -114,9 +110,13 @@ int main() {
 	printf("Allocated memory at address %p (Block 6)\n", ptr6);
 
 	printf("-------------------- free --------------------\n");
+	printf("Number of blocks allocated: %d\n", allocated_blocks);
+	printf("Number of blocks freed: %d\n", freed_blocks);
     _free(ptr1);
     _free(ptr2);
     _free(ptr3);
+	printf("Number of blocks freed: %d\n", freed_blocks);
+	printf("\n");
 	printf("-------------------- free (large) --------------------\n");
     _free(large_ptr);
 	printf("-------------------- free (aligned_alloc) --------------------\n");
@@ -206,5 +206,15 @@ int main() {
 	printf("Number of blocks freed: %d\n", freed_blocks);
 
 
+
+	char *addr;
+
+	addr = _malloc(16);
+	_free(NULL);
+	_free((void *)addr + 5);
+	if (_realloc((void *)addr + 5, 10) == NULL)
+		printf("Bonjours\n");
+	_free(addr);
+	check_for_leaks();
     return 0;
 }

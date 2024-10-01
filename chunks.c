@@ -55,7 +55,6 @@ inline void split_block(Block *block, size_t size, size_t alignment) {
         if (remaining_size > BLOCK_SIZE) {
             Block *new_block = (Block *)aligned_new_block_address;
             new_block->size = remaining_size;
-			printf("new_block->size = %zu\n", new_block->size);
             new_block->free = 1;
             new_block->next = block->next;
             block->size = size;
@@ -108,11 +107,19 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
         return NULL;
     }
 
+	if (mprotect(request, total_size, PROT_READ | PROT_WRITE) == -1) {
+		perror("mprotect failed");
+		if (munmap(request, total_size) == -1)
+			perror("munmap failed");
+		return NULL;
+	}
+
     uintptr_t raw_addr = (uintptr_t)request;
     uintptr_t aligned_addr = (raw_addr + sizeof(Block) + sizeof(Block *) + alignment_mask) & ~alignment_mask;
 
     if (aligned_addr + size > raw_addr + total_size) {
-        munmap(request, total_size);
+        if (munmap(request, total_size) == -1)
+			perror("munmap failed");
         fprintf(stderr, "Error: Aligned address exceeds allocated memory.\n");
         return NULL;
     }
@@ -134,7 +141,6 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
     }
 
     allocated_blocks++;
-
     #ifdef DEBUG
         printf("Allocated memory at address %p using mmap\n", block->aligned_address);
         printf("Block stored at %p\n", (void *)block);
@@ -162,6 +168,12 @@ void *request_space_mmap(size_t size, size_t alignment) {
                                MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (mapped_memory == MAP_FAILED)
         return NULL;
+	
+	if (mprotect(mapped_memory, total_size, PROT_READ | PROT_WRITE) == -1) {
+		perror("mprotect failed");
+		munmap(mapped_memory, total_size);
+		return NULL;
+	}
 
     uintptr_t raw_addr = (uintptr_t)mapped_memory;
     uintptr_t aligned_addr = ALIGN(raw_addr + sizeof(Block), alignment);

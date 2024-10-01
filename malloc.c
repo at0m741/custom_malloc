@@ -12,6 +12,31 @@ Block *is_mmap = NULL;
 	* Returns: pointer to the allocated memory
 */	
 
+void *_realloc(void *ptr, size_t new_size) {
+    if (new_size == 0) {
+        _free(ptr);
+        return NULL;
+    }
+
+    if (ptr == NULL) {
+        return _malloc(new_size);
+    }
+
+    Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
+    
+    if (block->size >= new_size) {
+        return ptr;
+    }
+    void *new_ptr = _malloc(new_size);
+    if (new_ptr == NULL) {
+        return NULL; 
+    }
+	allocated_blocks++;
+    memcpy(new_ptr, ptr, block->size);
+    _free(ptr);
+
+    return new_ptr;
+}
 
 void *_malloc(size_t size) {
     if (__builtin_expect(size == 0, 0))

@@ -28,14 +28,8 @@ void coalesce_free_blocks() {
             uintptr_t aligned_addr = (uintptr_t)(current + 1);
             if (aligned_addr % ALIGNMENT != 0) 
                 printf("Warning: Coalesced block not aligned at %p\n", (void *)aligned_addr);
-            #ifdef DEBUG
-                printf("Coalesced block at %p with block at %p\n", current, current->next);
-                printf("New block size: %zu\n", current->size);
-                printf("\n");
-            #endif
         } else {
             current = current->next;
-			printf("current->size = %zu\n", current->size);
         }
     }
 }
