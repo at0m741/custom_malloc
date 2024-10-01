@@ -85,7 +85,7 @@ int main() {
 	} else {
 		printf("Aligned memory at address %p\n", ptr_aligned_non_multiple);
 		hexdump(ptr_aligned_non_multiple, 18);
-		_free(ptr_aligned_non_multiple);
+		_aligned_free(ptr_aligned_non_multiple);
 	}
 	printf("-------------------- intentional memory leak --------------------\n");
 	int *leak_ptr = (int *)_malloc(sizeof(int) * 100);
@@ -120,8 +120,8 @@ int main() {
 	printf("-------------------- free (large) --------------------\n");
     _free(large_ptr);
 	printf("-------------------- free (aligned_alloc) --------------------\n");
-	_free(ptr5);
-	_free(ptr6);
+	_aligned_free(ptr5);
+	_aligned_free(ptr6);
 	printf("Number of blocks freed: %d\n", freed_blocks);
 	printf("\n");
 	
@@ -141,7 +141,7 @@ int main() {
 	printf("Allocated memory at address %p (Block 7)\n", ptr7);
 	
 	printf("-------------------- free (aligned_alloc) --------------------\n");
-	_free(ptr7);
+	_aligned_free(ptr7);
 	printf("Number of blocks freed: %d\n", freed_blocks);
 	printf("\n");
 	
@@ -186,7 +186,7 @@ int main() {
 	end = clock();
 	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
 	printf("Time taken to write 1,000,000 integers using custom aligned_alloc: %f seconds\n", cpu_time_used);
-	_free(ptraligned);
+	_aligned_free(ptraligned);
 	check_for_leaks();
 
 	start = clock();
@@ -201,10 +201,35 @@ int main() {
 	printf("Time taken to write 1,000,000 integers using malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
 	check_for_leaks();
 	hexdump(freelist, 1000);
+
+	start = clock();
+	for (int i = 0; i < 1000; i++)
+	{
+		int *ptr11 = (int *)__mm_malloc(sizeof(int), 32);
+		*ptr11 = i;
+		_free(ptr11);
+	}
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken to write 1,000,000 integers using custom __mm_malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
+	
+	start = clock();
+	for (int i = 0; i < 1000; i++)
+	{
+		int *ptr12 = (int *)_mm_malloc(sizeof(int), 32);
+		*ptr12 = i;
+		_mm_free(ptr12);
+	}
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken to write 1,000,000 integers using mm_malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
 	printf("-------------------- end --------------------\n");
 	printf("Number of blocks allocated: %d\n", allocated_blocks);
 	printf("Number of blocks freed: %d\n", freed_blocks);
-
+	
+	printf("-------------------- free (all) --------------------\n");
+	printf("Number of blocks freed: %d\n", freed_blocks);
+	printf("\n");
 
 
 	char *addr;

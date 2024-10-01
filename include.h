@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <sys/syscall.h>
 #include <stdarg.h>
+#include "aligned_alloc.h"
 
 /*
 	* ALIGNMENT: alignment of the block 
@@ -33,6 +34,7 @@
 #define BIN_MAX_SIZE 128
 #define CACHE_SIZE_L1 32768
 #define CACHE_SIZE_L2 262144
+#define UNIT 16
 
 typedef enum {
 	NO_CACHE = 0,
@@ -70,6 +72,23 @@ void *allocate_cache(size_t size);
 	* is_mmap: flag to indicate if the block is allocated using mmap
 */
 
+struct group {
+    struct meta *meta;
+    unsigned char active_idx:5;
+    char pad[UNIT - sizeof(struct meta *) - 1];
+    unsigned char storage[];
+};
+
+struct meta {
+    struct meta *prev, *next;
+    struct group *mem;
+    volatile int avail_mask, freed_mask;
+    uintptr_t last_idx:5;
+    uintptr_t freeable:1;
+    uintptr_t sizeclass:6;
+    uintptr_t maplen:8*sizeof(uintptr_t)-12;
+};
+
 typedef struct Block {
     size_t size;
     struct Block *next;
@@ -101,6 +120,7 @@ void check_alignment(void *aligned_address);
 void *_malloc(size_t size);
 void *_aligned_alloc(size_t alignment, size_t size);
 void _free(void *ptr);
+void _aligned_free(void *ptr); 
 void *_realloc(void *ptr, size_t new_size); 
 /* memory leak detection and utils */
 
@@ -108,5 +128,34 @@ long _syscall(long number, ...);
 void check_for_leaks();
 void* _sbrk(intptr_t increment);
 void hexdump(void *ptr, size_t size);
+
+
+#define __vector __attribute__((vector_size(16) ))
+extern int allocated_blocks;
+
+__attribute__((always_inline))
+static inline void *__mm_malloc(size_t _size, size_t _alignment) {
+	size_t _vec_align = sizeof(__vector float);	
+
+	size_t _malloc_align = (sizeof (void *) + sizeof (void *));
+	void *_ptr;
+
+	if (_alignment == _malloc_align && _alignment == _vec_align)
+		return _malloc(_size);
+	if (_alignment < _vec_align)
+		_alignment = _vec_align;
+	if (_alignment < _malloc_align)
+		_alignment = _malloc_align;
+
+	if (posix_memalign(&_ptr, _alignment, _size) == 0)
+	{
+		allocated_blocks++;
+		return _ptr;
+	}
+
+	else
+		return NULL;
+}
+
 
 #endif
