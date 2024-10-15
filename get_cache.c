@@ -1,12 +1,15 @@
 #include "include.h"
 
-void get_cache_info() {
+void get_cache_info() 
+{
     unsigned int eax, ebx, ecx, edx;
 
-    for (int i = 1; i < 4; i++) {
+    for (int i = 1; i < 4; i++) 
+	{
         ecx = i;
 
-        asm volatile (
+        asm volatile 
+		(
             "cpuid"
             : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
             : "a" (4), "c" (ecx)

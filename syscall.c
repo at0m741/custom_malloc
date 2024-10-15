@@ -1,7 +1,8 @@
 #include "include.h"
 
 
-long _syscall(long number, ...) {
+long _syscall(long number, ...) 
+{
     va_list args;
     va_start(args, number);
 
@@ -16,7 +17,8 @@ long _syscall(long number, ...) {
 
     long ret;
 
-    __asm__ volatile (
+    __asm__ volatile 
+	(
         "mov %1, %%rax \n"
         "mov %2, %%rdi \n"
         "mov %3, %%rsi \n"
@@ -46,15 +48,18 @@ long _syscall(long number, ...) {
 
 #ifdef TINY_ALLOC
 
-void* _sbrk(intptr_t increment) {
+void* _sbrk(intptr_t increment) 
+{
 	static uintptr_t current_brk = 0;
 	uintptr_t new_brk;
 	void* result;
 
-	if (current_brk == 0) {
+	if (current_brk == 0) 
+	{
 		result = (void*)_syscall(SYS_brk, 0);
 		current_brk = (uintptr_t)result;
-		if (current_brk == (uintptr_t)-1) {
+		if (current_brk == (uintptr_t)-1) 
+		{
 			errno = ENOMEM;
 			return (void*)-1;
 		}
@@ -62,7 +67,8 @@ void* _sbrk(intptr_t increment) {
 
 	new_brk = current_brk + increment;
 	result = (void*)_syscall(SYS_brk, new_brk);
-	if ((uintptr_t)result == (uintptr_t)-1) {
+	if ((uintptr_t)result == (uintptr_t)-1) 
+	{
 		errno = ENOMEM;
 		return (void*)-1;
 	}

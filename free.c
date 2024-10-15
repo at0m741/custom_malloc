@@ -17,7 +17,8 @@ extern int freed_blocks;
 	* this function is called after freeing a block
 */
 
-#define MAX_BLOCK_SIZE 1024 * 1024
+
+__attribute__((hot))
 void coalesce_free_blocks() {
     Block *current = freelist;
     while (current && current->next) {
@@ -45,43 +46,29 @@ void coalesce_free_blocks() {
 	* the number of freed blocks is incremented
 */
 
-#include <assert.h>
 
-
-void _free(void *ptr) {
+__attribute__((hot))
+void _free(void *ptr) 
+{
     if (!ptr)
         return;
 
     Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
-
-	#ifdef DEBUG
-    printf("Freeing:\n");
-    printf("  ptr: %p\n", ptr);
-    printf("  Calculated block: %p\n", (void *)block);
-    printf("  block->aligned_address: %p\n", block->aligned_address);
-    printf("\n");
-	#endif
-	if (ptr != block->aligned_address) {
+	if (ptr != block->aligned_address) 
 		ptr = block->aligned_address;	
-	}
-	assert(block->aligned_address == ptr);
 
-
-    if (block->is_mmap) {
+    if (block->is_mmap) 
+	{
         size_t alignment_mask = sysconf(_SC_PAGESIZE) - 1;
         size_t total_size = block->size + sizeof(Block) + alignment_mask;
         total_size = (total_size + alignment_mask) & ~alignment_mask;
         munmap((void *)block, total_size);
-    } else {
+    } 
+	else
+	{
         block->free = 1;
 		coalesce_free_blocks();
     }
     allocated_blocks--;
-
-    #ifdef DEBUG
-        printf("Freed memory at address %p\n", block->aligned_address);
-        printf("Allocated blocks: %d\n", allocated_blocks);
-        printf("\n");
-    #endif
 }
 

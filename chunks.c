@@ -12,19 +12,64 @@ extern int allocated_blocks;
 	* Returns: pointer to the allocated memory
 */
 
-Block *find_free_block(Block **last, size_t size, size_t alignment) {
-    Block *current = freelist;
 
-    while (current) {
-        if (current->free && current->size >= size) {
-            return current;
+static uint32_t bitmap[BITMAP_SIZE / 32]; 
+
+static void *memory_pool = NULL;
+__attribute__((hot, always_inline))
+inline void initialize_memory_pool() {
+    size_t total_size = MEMORY_POOL_SIZE;
+    memory_pool = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (memory_pool == MAP_FAILED) {
+        perror("mmap failed");
+        memory_pool = NULL;
+    } else {
+        memset(bitmap, 0, sizeof(bitmap)); 
+    }
+}
+
+__attribute__((hot, always_inline))
+inline
+void *find_free_block(size_t size, size_t alignment) {
+    if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
+        return NULL;
+
+    size_t units_needed = (size + BLOCK_UNIT_SIZE - 1) / BLOCK_UNIT_SIZE;
+
+    for (size_t i = 0; i < BITMAP_SIZE; ) {
+        uint32_t bits = bitmap[i / 32];
+        if (~bits) { 
+            int free_bit = __builtin_ctz(~bits);
+            size_t start = (i & ~31) + free_bit;
+            if (start + units_needed > BITMAP_SIZE) {
+                break;
+            }
+
+            int enough_space = 1;
+            for (size_t j = 0; j < units_needed; j++) {
+                size_t idx = start + j;
+                if (bitmap[idx / 32] & (1U << (idx % 32))) {
+                    i = idx + 1;
+                    enough_space = 0;
+                    break;
+                }
+            }
+            if (enough_space) {
+                for (size_t j = 0; j < units_needed; j++) {
+                    size_t idx = start + j;
+                    bitmap[idx / 32] |= (1U << (idx & 31));
+                }
+                uintptr_t addr = (uintptr_t)memory_pool + start * BLOCK_UNIT_SIZE;
+                uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
+                return (void *)aligned_addr;
+            }
+        } else {
+            i = (i & ~31) + 32;  
         }
-        *last = current;
-        current = current->next;
     }
     return NULL;
 }
-
 /*
 	* Function to split a block into two blocks
 	* block: block to be split
@@ -33,13 +78,14 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 	* the block is split into two blocks, one of the requested size and the other of the remaining size
 */
 
-
-inline void split_block(Block *block, size_t size, size_t alignment) {
+inline void split_block(Block *block, size_t size, size_t alignment) 
+{
     size_t remaining_size = block->size - size - BLOCK_SIZE;
     uintptr_t new_block_address = (uintptr_t)block + BLOCK_SIZE + size;
-    uintptr_t aligned_new_block_address = ALIGN(new_block_address, alignment); 
+    uintptr_t aligned_new_block_address = __builtin_align_up(new_block_address, alignment);
     
-    if (remaining_size >= BLOCK_SIZE) {
+    if (remaining_size >= BLOCK_SIZE) 
+	{
         Block *new_block = (Block *)aligned_new_block_address;
         new_block->size = remaining_size;
         new_block->free = 1;
@@ -63,11 +109,13 @@ inline void split_block(Block *block, size_t size, size_t alignment) {
 
 
 
-Block *request_space(Block *last, size_t size, size_t alignment) {
-    if (size == 0)
+Block *request_space(Block *last, size_t size, size_t alignment) 
+{
+    if (__builtin_expect(size == 0, 0)) 
         return NULL;
 
-    if ((alignment & (alignment - 1)) != 0) {
+    if ((alignment & (alignment - 1)) != 0) 
+	{
         fprintf(stderr, "Error: Alignment must be a power of two.\n");
         return NULL;
     }
@@ -80,12 +128,14 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
 
     void *request = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (request == MAP_FAILED) {
+    if (request == MAP_FAILED) 
+	{
         perror("mmap failed");
         return NULL;
     }
 
-	if (mprotect(request, total_size, PROT_READ | PROT_WRITE) == -1) {
+	if (mprotect(request, total_size, PROT_READ | PROT_WRITE) == -1) 
+	{
 		perror("mprotect failed");
 		if (munmap(request, total_size) == -1)
 			perror("munmap failed");
@@ -93,9 +143,10 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
 	}
 
     uintptr_t raw_addr = (uintptr_t)request;
-    uintptr_t aligned_addr = (raw_addr + sizeof(Block) + sizeof(Block *) + alignment_mask) & ~alignment_mask;
+    uintptr_t aligned_addr = __builtin_align_up(raw_addr + sizeof(Block) + sizeof(Block *), alignment); 
 
-    if (aligned_addr + size > raw_addr + total_size) {
+    if (aligned_addr + size > raw_addr + total_size) 
+	{
         if (munmap(request, total_size) == -1)
 			perror("munmap failed");
         fprintf(stderr, "Error: Aligned address exceeds allocated memory.\n");
@@ -112,22 +163,12 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
     Block **back_ptr = (Block **)(aligned_addr - sizeof(Block *));
     *back_ptr = block;
 
-    if (last) {
+    if (last)
         last->next = block;
-    } else if (!freelist) {
+    else if (!freelist)
         freelist = block;
-    }
 
     allocated_blocks++;
-    #ifdef DEBUG
-        printf("Allocated memory at address %p using mmap\n", block->aligned_address);
-        printf("Block stored at %p\n", (void *)block);
-        printf("Back pointer stored at %p\n", (void *)back_ptr);
-        printf("Allocated blocks: %d\n", allocated_blocks);
-        printf("\n");
-    #endif
-
-    memset(block->aligned_address, 0, size);
 
     return block;
 }
@@ -139,22 +180,25 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
 */
 
 
-
-void *request_space_mmap(size_t size, size_t alignment) {
+__attribute__((hot))
+void *request_space_mmap(size_t size, size_t alignment) 
+{
     size_t total_size = size + BLOCK_SIZE + alignment - 1;
     void *mapped_memory = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                                MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
     if (mapped_memory == MAP_FAILED)
         return NULL;
 	
-	if (mprotect(mapped_memory, total_size, PROT_READ | PROT_WRITE) == -1) {
+	if (mprotect(mapped_memory, total_size, PROT_READ | PROT_WRITE) == -1) 
+	{
 		perror("mprotect failed");
 		munmap(mapped_memory, total_size);
 		return NULL;
 	}
 
     uintptr_t raw_addr = (uintptr_t)mapped_memory;
-    uintptr_t aligned_addr = ALIGN(raw_addr + sizeof(Block), alignment);
+    uintptr_t aligned_addr = __builtin_align_up(raw_addr + BLOCK_SIZE, alignment); 
     Block *block = (Block *)(aligned_addr - sizeof(Block));
 
     block->size = size;

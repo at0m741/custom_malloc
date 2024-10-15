@@ -34,6 +34,12 @@
 #define CACHE_SIZE_L1 32768
 #define CACHE_SIZE_L2 262144
 #define UNIT 16
+#define BITMAP_SIZE 1024   
+#define BLOCK_UNIT_SIZE 64  
+#define MEMORY_POOL_SIZE (BITMAP_SIZE * BLOCK_UNIT_SIZE)
+#define BLOCK_SIZE ALIGN(sizeof(Block), ALIGNMENT)
+#define MAX_BLOCK_SIZE 1024 * 1024
+
 
 typedef enum {
 	NO_CACHE = 0,
@@ -78,8 +84,6 @@ struct group {
     unsigned char storage[];
 };
 
-
-
 typedef struct Block {
     size_t size;
     struct Block *next;
@@ -88,7 +92,15 @@ typedef struct Block {
 	int is_mmap;
 } Block;
 
-#define BLOCK_SIZE ALIGN(sizeof(Block), ALIGNMENT)
+typedef struct MemoryAllocator {
+    Block *freelist;
+    int allocated_blocks;
+    int freed_blocks;
+	size_t block_size;
+    Block *bins[BIN_COUNT];
+} MemoryAllocator;
+
+
 
 /* memory utils */
 
@@ -100,9 +112,10 @@ void *_memcpy_ERMS(void *dest, const void *src, size_t n);
 /* block utils */
 
 void coalesce_free_blocks(); 
-Block *find_free_block(Block **last, size_t size, size_t alignment); 
+void *find_free_block(size_t size, size_t alignment); 
 void split_block(Block *block, size_t size, size_t alignment);
-
+void initialize_allocator();
+void initialize_memory_pool();
 /* memory allocation */
 
 void *request_space_mmap(size_t size, size_t alignment);
@@ -124,7 +137,7 @@ void hexdump(void *ptr, size_t size);
 #define __vector __attribute__((vector_size(16) ))
 extern int allocated_blocks;
 
-__attribute__((always_inline))
+__attribute__((always_inline, hot))
 static inline void *__mm_malloc(size_t _size, size_t _alignment) {
 	size_t _vec_align = sizeof(__vector float);	
 
