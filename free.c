@@ -27,8 +27,9 @@ void coalesce_free_blocks() {
             current->next = current->next->next;
 
             uintptr_t aligned_addr = (uintptr_t)(current + 1);
-            if (aligned_addr % ALIGNMENT != 0) 
+            if ((aligned_addr & ALIGNMENT - 1) != 0) 
                 printf("Warning: Coalesced block not aligned at %p\n", (void *)aligned_addr);
+		_mm_prefetch(current->next, _MM_HINT_T0);
         } else {
             current = current->next;
         }
@@ -47,12 +48,12 @@ void coalesce_free_blocks() {
 */
 
 
-__attribute__((hot))
-void _free(void *ptr) 
+__attribute__((hot, always_inline))
+inline void _free(void *ptr) 
 {
     if (!ptr)
         return;
-
+	printf("Freeing block at address %p\n", ptr);
     Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
 	if (ptr != block->aligned_address) 
 		ptr = block->aligned_address;	
@@ -61,11 +62,9 @@ void _free(void *ptr)
 	{
         size_t alignment_mask = sysconf(_SC_PAGESIZE) - 1;
         size_t total_size = block->size + sizeof(Block) + alignment_mask;
-        total_size = (total_size + alignment_mask) & ~alignment_mask;
+		total_size = __builtin_align_up(total_size, ALIGNMENT);
         munmap((void *)block, total_size);
-    } 
-	else
-	{
+    } else {
         block->free = 1;
 		coalesce_free_blocks();
     }

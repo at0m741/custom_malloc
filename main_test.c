@@ -115,6 +115,29 @@ int main() {
         printf("No memory leaks detected\n");
     else
         printf("Memory leak detected\n");
+	
+	int *ptr2 = (int *)_malloc(sizeof(int) * 100);
+	if (ptr2 == NULL) {
+		printf("Allocation failed for ptr2\n");
+		return 1;
+	}
+	printf("custom malloc\n");
+	printf("Address of ptr2: %p\n", ptr2);
+	hexdump(ptr2, sizeof(int) * 100);
+	_free(ptr2);
+
+	int *ptr3 = (int *)malloc(sizeof(int) * 100);
+	if (ptr3 == NULL) {
+		printf("Allocation failed for ptr3\n");
+		return 1;
+	}
+	printf("real malloc\n");
+	printf("Address of ptr3: %p\n", ptr3);
+	hexdump(ptr3, sizeof(int) * 100);
+	free(ptr3);
+
+	int *ptr4 = (int *)_malloc(sizeof(int) * 100);
+	_free(ptr4);
 
     return 0;
 }
