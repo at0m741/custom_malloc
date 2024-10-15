@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <sys/syscall.h>
 #include <stdarg.h>
-#include "aligned_alloc.h"
 
 /*
 	* ALIGNMENT: alignment of the block 
