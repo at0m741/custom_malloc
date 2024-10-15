@@ -42,7 +42,6 @@ void *_malloc(size_t size) {
     if (__builtin_expect(size == 0, 0))
         return NULL;
     size = ALIGN(size, ALIGNMENT);
-
     Block *block = NULL;
     if (size <= BIN_MAX_SIZE) {
         int bin_index = size / ALIGNMENT - 1;
@@ -65,8 +64,6 @@ void *_malloc(size_t size) {
     else {
         if (!freelist) {
             block = request_space(NULL, size, ALIGNMENT);
-            if (__builtin_expect(!block, 0))
-                return NULL;
             freelist = block;
         } else {
             Block *last = freelist;
@@ -78,8 +75,6 @@ void *_malloc(size_t size) {
                 _memset_avx(block->aligned_address, 0, size);
             } else {
                 block = request_space(last, size, ALIGNMENT);
-                if (__builtin_expect(!block, 0))
-                    return NULL;
             }
         }
     }

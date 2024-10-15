@@ -13,21 +13,16 @@ extern int allocated_blocks;
 */
 
 Block *find_free_block(Block **last, size_t size, size_t alignment) {
-	if (__builtin_expect(freelist == NULL, 0 || size == 0))
-		return NULL;
-
     Block *current = freelist;
-    while (current && !(current->free && current->size >= size)) 
-	{
+
+    while (current) {
+        if (current->free && current->size >= size) {
+            return current;
+        }
         *last = current;
         current = current->next;
-		/* #ifdef DEBUG */
-		/* 	printf("Searching for free block\n"); */
-		/* 	printf("Current block: %p\n", current); */
-		/* 	printf("\n"); */
-		/* #endif */
     }
-    return current;
+    return NULL;
 }
 
 /*
@@ -39,36 +34,19 @@ Block *find_free_block(Block **last, size_t size, size_t alignment) {
 */
 
 
-
 inline void split_block(Block *block, size_t size, size_t alignment) {
-	if (__builtin_expect(block->size < size, 0))
-		return;
-
     size_t remaining_size = block->size - size - BLOCK_SIZE;
-
-    if (remaining_size > BLOCK_SIZE) {
-        uintptr_t new_block_address = (uintptr_t)block + BLOCK_SIZE + size;
-        uintptr_t aligned_new_block_address = (new_block_address + alignment - 1) & ~(alignment - 1);
-        size_t wasted_space = aligned_new_block_address - new_block_address;
-
-        remaining_size -= wasted_space;
-        if (remaining_size > BLOCK_SIZE) {
-            Block *new_block = (Block *)aligned_new_block_address;
-            new_block->size = remaining_size;
-            new_block->free = 1;
-            new_block->next = block->next;
-            block->size = size;
-            block->next = new_block;
-        }
+    uintptr_t new_block_address = (uintptr_t)block + BLOCK_SIZE + size;
+    uintptr_t aligned_new_block_address = ALIGN(new_block_address, alignment); 
+    
+    if (remaining_size >= BLOCK_SIZE) {
+        Block *new_block = (Block *)aligned_new_block_address;
+        new_block->size = remaining_size;
+        new_block->free = 1;
+        new_block->next = block->next;
+        block->size = size;
+        block->next = new_block;
     }
-#ifdef DEBUG
-	printf("Splitting block\n");
-	printf("Block size: %zu\n", block->size);
-	printf("Remaining size: %zu\n", remaining_size);
-	check_alignment(block->aligned_address);
-	printf("\n");
-#endif
-
 }
 
 

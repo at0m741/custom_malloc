@@ -78,15 +78,7 @@ struct group {
     unsigned char storage[];
 };
 
-struct meta {
-    struct meta *prev, *next;
-    struct group *mem;
-    volatile int avail_mask, freed_mask;
-    uintptr_t last_idx:5;
-    uintptr_t freeable:1;
-    uintptr_t sizeclass:6;
-    uintptr_t maplen:8*sizeof(uintptr_t)-12;
-};
+
 
 typedef struct Block {
     size_t size;

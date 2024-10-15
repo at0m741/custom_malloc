@@ -201,28 +201,6 @@ int main() {
 	printf("Time taken to write 1,000,000 integers using malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
 	check_for_leaks();
 	hexdump(freelist, 1000);
-
-	start = clock();
-	for (int i = 0; i < 1000; i++)
-	{
-		int *ptr11 = (int *)__mm_malloc(sizeof(int), 32);
-		*ptr11 = i;
-		_free(ptr11);
-	}
-	end = clock();
-	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-	printf("Time taken to write 1,000,000 integers using custom __mm_malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
-	
-	start = clock();
-	for (int i = 0; i < 1000; i++)
-	{
-		int *ptr12 = (int *)_mm_malloc(sizeof(int), 32);
-		*ptr12 = i;
-		_mm_free(ptr12);
-	}
-	end = clock();
-	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-	printf("Time taken to write 1,000,000 integers using mm_malloc and allocating 1 byte at a time: %f seconds\n", cpu_time_used);
 	printf("-------------------- end --------------------\n");
 	printf("Number of blocks allocated: %d\n", allocated_blocks);
 	printf("Number of blocks freed: %d\n", freed_blocks);
@@ -232,14 +210,5 @@ int main() {
 	printf("\n");
 
 
-	char *addr;
-
-	addr = _malloc(16);
-	_free(NULL);
-	_free((void *)addr + 5);
-	if (_realloc((void *)addr + 5, 10) == NULL)
-		printf("Bonjours\n");
-	_free(addr);
-	check_for_leaks();
     return 0;
 }
