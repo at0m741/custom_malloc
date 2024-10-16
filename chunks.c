@@ -12,10 +12,8 @@ extern int allocated_blocks;
 	* Returns: pointer to the allocated memory
 */
 
-
 static uint32_t bitmap[BITMAP_SIZE / 32]; 
 static void *memory_pool = NULL;
-
 
 __attribute__((hot, always_inline))
 inline void initialize_memory_pool() 
@@ -78,6 +76,7 @@ inline void *find_free_block(size_t size, size_t alignment)
     }
     return NULL;
 }
+
 /*
 	* Function to split a block into two blocks
 	* block: block to be split
@@ -103,7 +102,6 @@ inline void split_block(Block *block, size_t size, size_t alignment)
     }
 }
 
-
 /*
 	* this function call sbrk to allocate memory
 	* last: last block in the freelist
@@ -112,10 +110,6 @@ inline void split_block(Block *block, size_t size, size_t alignment)
 	* only be used if the requested size is larger than the block size
 	* Returns: pointer to the allocated memory
 */
-
-
-
-
 
 Block *request_space(Block *last, size_t size, size_t alignment) 
 {
@@ -180,13 +174,13 @@ Block *request_space(Block *last, size_t size, size_t alignment)
 
     return block;
 }
+
 /*
 	* this function call mmap to allocate memory
 	* size: size of the memory to be allocated
 	* alignment: alignment of the memory to be allocated
 	* Returns: pointer to the allocated memory
 */
-
 
 __attribute__((hot))
 void *request_space_mmap(size_t size, size_t alignment) 
