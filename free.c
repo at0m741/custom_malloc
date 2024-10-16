@@ -18,8 +18,8 @@ extern int freed_blocks;
 */
 
 
-__attribute__((hot))
-void coalesce_free_blocks() {
+__attribute__((hot, always_inline))
+inline void coalesce_free_blocks() {
     Block *current = freelist;
     while (current && current->next) {
         if (current->free && current->next->free) {
