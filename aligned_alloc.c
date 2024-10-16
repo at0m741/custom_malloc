@@ -2,7 +2,8 @@
 
 #define UNIT 16
 
-void *_aligned_alloc(size_t alignment, size_t size) 
+__attribute__((hot, flatten, always_inline))
+inline void *_aligned_alloc(size_t alignment, size_t size) 
 {
     if ((alignment & (alignment - 1)) != 0 || size == 0) 
 	{
