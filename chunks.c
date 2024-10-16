@@ -14,8 +14,9 @@ extern int allocated_blocks;
 
 
 static uint32_t bitmap[BITMAP_SIZE / 32]; 
-
 static void *memory_pool = NULL;
+
+
 __attribute__((hot, always_inline))
 inline void initialize_memory_pool() {
     size_t total_size = MEMORY_POOL_SIZE;
@@ -30,33 +31,38 @@ inline void initialize_memory_pool() {
 }
 
 __attribute__((hot, always_inline))
-inline
-void *find_free_block(size_t size, size_t alignment) {
+inline void *find_free_block(size_t size, size_t alignment) 
+{
     if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
         return NULL;
 
     size_t units_needed = (size + BLOCK_UNIT_SIZE - 1) / BLOCK_UNIT_SIZE;
 
-    for (size_t i = 0; i < BITMAP_SIZE; ) {
+    for (size_t i = 0; i < BITMAP_SIZE; ) 
+    {
         uint32_t bits = bitmap[i / 32];
-        if (~bits) { 
+        if (~bits) 
+        { 
             int free_bit = __builtin_ctz(~bits);
             size_t start = (i & ~31) + free_bit;
-            if (start + units_needed > BITMAP_SIZE) {
+            if (start + units_needed > BITMAP_SIZE)
                 break;
-            }
 
             int enough_space = 1;
-            for (size_t j = 0; j < units_needed; j++) {
+            for (size_t j = 0; j < units_needed; j++) 
+            {
                 size_t idx = start + j;
-                if (bitmap[idx / 32] & (1U << (idx % 32))) {
+                if (bitmap[idx / 32] & (1U << (idx & 31))) 
+                {
                     i = idx + 1;
                     enough_space = 0;
                     break;
                 }
             }
-            if (enough_space) {
-                for (size_t j = 0; j < units_needed; j++) {
+            if (enough_space) 
+            {
+                for (size_t j = 0; j < units_needed; j++) 
+                {
                     size_t idx = start + j;
                     bitmap[idx / 32] |= (1U << (idx & 31));
                 }
@@ -64,9 +70,9 @@ void *find_free_block(size_t size, size_t alignment) {
                 uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
                 return (void *)aligned_addr;
             }
-        } else {
+        } 
+        else
             i = (i & ~31) + 32;  
-        }
     }
     return NULL;
 }
