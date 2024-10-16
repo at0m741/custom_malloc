@@ -26,6 +26,7 @@ inline void *_aligned_alloc(size_t alignment, size_t size)
     return (void*)aligned_addr;
 }
 
+__attribute__((hot, flatten, always_inline))
 void _aligned_free(void *ptr) 
 {
     if (ptr)
