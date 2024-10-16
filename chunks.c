@@ -18,16 +18,18 @@ static void *memory_pool = NULL;
 
 
 __attribute__((hot, always_inline))
-inline void initialize_memory_pool() {
+inline void initialize_memory_pool() 
+{
     size_t total_size = MEMORY_POOL_SIZE;
     memory_pool = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (memory_pool == MAP_FAILED) {
+    if (memory_pool == MAP_FAILED) 
+    {
         perror("mmap failed");
         memory_pool = NULL;
-    } else {
+    } 
+    else
         memset(bitmap, 0, sizeof(bitmap)); 
-    }
 }
 
 __attribute__((hot, always_inline))
