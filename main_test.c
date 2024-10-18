@@ -95,6 +95,7 @@ int main() {
     printf("---- Benchmark with standard malloc ----\n");
     start = clock();
     int *ptr_standard = (int *)malloc(sizeof(int) * num_elements);
+	printf("allocated_blocks: %d\n", allocated_blocks);
     if (ptr_standard == NULL) {
         printf("Allocation failed for ptr_standard\n");
         return 1;
@@ -105,8 +106,28 @@ int main() {
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
     printf("Time taken with standard malloc: %f seconds\n", cpu_time_used);
 	hexdump(ptr_standard, sizeof(int) * 100);
+	printf("Address of ptr_standard: %p\n", ptr_standard);
     free(ptr_standard);
     printf("Deallocation successful for ptr_standard\n\n");
+	printf("Allocated blocks: %d\n", allocated_blocks);
+	printf("Freed blocks: %d\n", freed_blocks);
+	check_for_leaks();
+	printf("---- Benchmark with custom _aligned_alloc ----\n");
+	start = clock();
+	int *ptr_aligned_custom = (int *)_aligned_alloc(32, sizeof(int) * num_elements);
+	if (ptr_aligned_custom == NULL) {
+		printf("Aligned allocation failed for ptr_aligned_custom\n");
+		return 1;
+	}
+	for (size_t i = 0; i < num_elements; i++)
+		ptr_aligned_custom[i] = i;
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken with custom _aligned_alloc: %f seconds\n", cpu_time_used);
+	_aligned_free(ptr_aligned_custom);
+	printf("Deallocation successful for ptr_aligned_custom\n\n");
+	
+
 
     printf("===== Memory Leak Check =====\n\n");
     printf("Number of blocks allocated: %d\n", allocated_blocks);
@@ -138,6 +159,39 @@ int main() {
 
 	int *ptr4 = (int *)_malloc(sizeof(int) * 100);
 	_free(ptr4);
+	
+
+	int *ptr5 = (int *)_malloc(sizeof(int) * rand());
+	_free(ptr5);
+
+	double *ptr7 = (double *)_malloc(sizeof(double) * 100);
+	for (int i = 0; i < 100; i++)
+		ptr7[i] = i;
+	hexdump(ptr7, sizeof(double) * 100);
+	_free(ptr7);
+	count_blocks(freelist);
+	check_for_leaks();
+
+	int *ptr6 = (int *)_malloc(sizeof(int) * 1000000);
+	for (int i = 0; i < 1000000; i++)
+		ptr6[i] = i;
+	hexdump(ptr6, sizeof(int) * 100);
+	_free(ptr6);
+	count_blocks(freelist);
+	check_for_leaks();
+
+	char *str2 = "Lorem ipsum dolor sit amet, consectetur adipiscing elit";
+	printf("String: %s\n", str2);
+	char *dup_str2 = ft_strdup(str2);
+	if (dup_str2 == NULL) {
+		printf("String duplication failed\n");
+		return 1;
+	}
+	printf("Duplicated string: %s\n", dup_str2);
+	hexdump(dup_str, ft_strlen(dup_str2));
+	_free(dup_str2);
+	count_blocks(freelist);
+
 
     return 0;
 }

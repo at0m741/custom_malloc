@@ -67,13 +67,16 @@ inline void *find_free_block(size_t size, size_t alignment)
                     bitmap[idx / 32] |= (1U << (idx & 31));
                 }
                 uintptr_t addr = (uintptr_t)memory_pool + start * BLOCK_UNIT_SIZE;
-                uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
+                uintptr_t aligned_addr = __builtin_align_up(addr, alignment); 
                 return (void *)aligned_addr;
             }
         } 
         else
             i = (i & ~31) + 32;  
     }
+
+	printf("Allocated blocks: %d\n", allocated_blocks);
+
     return NULL;
 }
 
@@ -124,7 +127,6 @@ Block *request_space(Block *last, size_t size, size_t alignment)
 
     size_t alignment_mask = alignment - 1;
     size_t total_size = size + sizeof(Block) + sizeof(Block *) + alignment_mask;
-
     size_t page_size = sysconf(_SC_PAGESIZE);
     total_size = (total_size + page_size - 1) & ~(page_size - 1);
 
@@ -169,9 +171,7 @@ Block *request_space(Block *last, size_t size, size_t alignment)
         last->next = block;
     else if (!freelist)
         freelist = block;
-
     allocated_blocks++;
-
     return block;
 }
 
@@ -186,6 +186,7 @@ __attribute__((hot))
 void *request_space_mmap(size_t size, size_t alignment) 
 {
     size_t total_size = size + BLOCK_SIZE + alignment - 1;
+	printf("Total size: %zu\n", total_size);
     void *mapped_memory = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                                MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 

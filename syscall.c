@@ -48,6 +48,7 @@ long _syscall(long number, ...)
 
 #ifdef TINY_ALLOC
 
+__attribute__((deprecated("This function is deprecated. Use mmap instead.")))
 void* _sbrk(intptr_t increment) 
 {
 	static uintptr_t current_brk = 0;

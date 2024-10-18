@@ -69,5 +69,7 @@ inline void _free(void *ptr)
 		coalesce_free_blocks();
     }
     allocated_blocks--;
+	block->free = 0;
+	count_blocks(freelist);
 }
 

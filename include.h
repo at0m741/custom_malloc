@@ -24,6 +24,10 @@
 	* CACHE_SIZE_L2: size of the L2 cache
 */
 
+#ifndef __GNUC__
+#define __builtin_align_up(x, align) (((x) + (align - 1)) & ~(align - 1))
+#endif
+
 #define ALIGNMENT 16
 #define ALIGN(size, alignment) (((size) + (alignment - 1)) & ~(alignment - 1))
 #define MMAP_THRESHOLD (128 * 1024) 
@@ -132,7 +136,7 @@ long _syscall(long number, ...);
 void check_for_leaks();
 void* _sbrk(intptr_t increment);
 void hexdump(void *ptr, size_t size);
-
+int count_blocks(Block *list); 
 
 #define __vector __attribute__((vector_size(16) ))
 extern int allocated_blocks;
