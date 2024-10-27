@@ -2,7 +2,7 @@ NAME = custom_alloc
 SO_NAME = ./libft_malloc_x86_64_Linux.so
 CC = clang
 
-CFLAGS = -g -O3 -mavx2 -fPIC  -mprefer-vector-width=256# -fPIC est nécessaire pour les bibliothèques partagées
+CFLAGS = -O3 -mavx2 -fPIC  -mprefer-vector-width=256# -fPIC est nécessaire pour les bibliothèques partagées
 
 SRC = $(wildcard *.c)
 

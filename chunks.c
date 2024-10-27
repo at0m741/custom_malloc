@@ -15,7 +15,7 @@ extern int allocated_blocks;
 static uint32_t bitmap[BITMAP_SIZE / 32]; 
 static void *memory_pool = NULL;
 
-__attribute__((hot, always_inline))
+__attribute__((hot, flatten))
 inline void initialize_memory_pool() 
 {
     size_t total_size = MEMORY_POOL_SIZE;
@@ -30,53 +30,59 @@ inline void initialize_memory_pool()
         memset(bitmap, 0, sizeof(bitmap)); 
 }
 
-__attribute__((hot, always_inline))
+__attribute__((hot, flatten))
 inline void *find_free_block(size_t size, size_t alignment) 
 {
-    if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
+if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
         return NULL;
 
     size_t units_needed = (size + BLOCK_UNIT_SIZE - 1) / BLOCK_UNIT_SIZE;
 
-    for (size_t i = 0; i < BITMAP_SIZE; ) 
+    __m256i mask = _mm256_set1_epi32(0xFFFFFFFF);
+    for (size_t i = 0; i < BITMAP_SIZE / 256; i++) 
     {
-        uint32_t bits = bitmap[i / 32];
-        if (~bits) 
-        { 
-            int free_bit = __builtin_ctz(~bits);
-            size_t start = (i & ~31) + free_bit;
-            if (start + units_needed > BITMAP_SIZE)
-                break;
+        __m256i bitmap_chunk =		_mm256_loadu_si256((__m256i*)&bitmap[i * 8]);
+        __m256i inverted_chunk =	_mm256_andnot_si256(bitmap_chunk, mask);
+        int bitmask =				_mm256_movemask_epi8(inverted_chunk);
+        if (bitmask != 0) 
+        {
+            for (int j = 0; j < 8; j++) 
+            {
+                uint32_t bits = ~bitmap[i * 8 + j]; 
+                if (bits) 
+                {
+                    int free_bit = __builtin_ctz(bits);
+                    size_t start = (i * 256) + (j * 32) + free_bit;
+                    if (start + units_needed > BITMAP_SIZE)
+                        return NULL;
 
-            int enough_space = 1;
-            for (size_t j = 0; j < units_needed; j++) 
-            {
-                size_t idx = start + j;
-                if (bitmap[idx / 32] & (1U << (idx & 31))) 
-                {
-                    i = idx + 1;
-                    enough_space = 0;
-                    break;
+                    int enough_space = 1;
+                    for (size_t k = 0; k < units_needed; k++) 
+                    {
+                        size_t idx = start + k;
+                        if (bitmap[idx / 32] & (1U << (idx % 32))) 
+                        {
+                            enough_space = 0;
+                            break;
+                        }
+                    }
+
+                    if (enough_space) 
+                    {
+                        for (size_t k = 0; k < units_needed; k++) 
+                        {
+                            size_t idx = start + k;
+                            bitmap[idx / 32] |= (1U << (idx % 32));
+                        }
+
+                        uintptr_t addr = (uintptr_t)memory_pool + start * BLOCK_UNIT_SIZE;
+                        uintptr_t aligned_addr = __builtin_align_up(addr, alignment); 
+                        return (void *)aligned_addr;
+                    }
                 }
             }
-            if (enough_space) 
-            {
-                for (size_t j = 0; j < units_needed; j++) 
-                {
-                    size_t idx = start + j;
-                    bitmap[idx / 32] |= (1U << (idx & 31));
-                }
-                uintptr_t addr = (uintptr_t)memory_pool + start * BLOCK_UNIT_SIZE;
-                uintptr_t aligned_addr = __builtin_align_up(addr, alignment); 
-                return (void *)aligned_addr;
-            }
-        } 
-        else
-            i = (i & ~31) + 32;  
+        }
     }
-
-	printf("Allocated blocks: %d\n", allocated_blocks);
-
     return NULL;
 }
 

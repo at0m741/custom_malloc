@@ -26,6 +26,41 @@ char *ft_strdup(const char *s) {
     return new;
 }
 
+void benchmark_malloc(size_t num_elements) {
+    struct timespec start, end;
+    double time_taken;
+
+    printf("---- Benchmark with custom _malloc ----\n");
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    int *ptr_custom = (int *)_malloc(sizeof(int) * num_elements);
+    if (ptr_custom == NULL) {
+        printf("Allocation failed for ptr_custom\n");
+        return;
+    }
+    for (size_t i = 0; i < num_elements; i++)
+        ptr_custom[i] = i;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    time_taken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("Time taken with custom _malloc: %f seconds\n", time_taken);
+    _free(ptr_custom);
+
+    printf("---- Benchmark with standard malloc ----\n");
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    int *ptr_standard = (int *)malloc(sizeof(int) * num_elements);
+    if (ptr_standard == NULL) {
+        printf("Allocation failed for ptr_standard\n");
+        return;
+    }
+    for (size_t i = 0; i < num_elements; i++)
+        ptr_standard[i] = i;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    time_taken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("Time taken with standard malloc: %f seconds\n", time_taken);
+    free(ptr_standard);
+}
+
 int main() {
     printf("===== Testing Custom Memory Allocator =====\n\n");
 
@@ -193,5 +228,38 @@ int main() {
 	count_blocks(freelist);
 
 
+	start = clock();
+	int *ptr_custom2 = (int *)_malloc(sizeof(int) * num_elements);
+	if (ptr_custom2 == NULL) {
+		printf("Allocation failed for ptr_custom2\n");
+		return 1;
+	}
+	for (size_t i = 0; i < num_elements; i++)
+		ptr_custom2[i] = i;
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken with custom _malloc: %f seconds\n", cpu_time_used);
+	_free(ptr_custom2);
+	count_blocks(freelist);
+	check_for_leaks();
+
+	start = clock();
+	int *ptr_standard2 = (int *)malloc(sizeof(int) * num_elements);
+	if (ptr_standard2 == NULL) {
+		printf("Allocation failed for ptr_standard2\n");
+		return 1;
+	}
+	for (size_t i = 0; i < num_elements; i++)
+		ptr_standard2[i] = i;
+	end = clock();
+	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+	printf("Time taken with standard malloc: %f seconds\n", cpu_time_used);
+	free(ptr_standard2);
+	count_blocks(freelist);
+	check_for_leaks();
+
+
+	printf("===== Running Modified Benchmark with Custom _malloc and Random Sizes =====\n\n");
+	benchmark_malloc(1000000);
     return 0;
 }
