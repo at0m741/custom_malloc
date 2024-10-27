@@ -82,7 +82,6 @@ inline void *_malloc(size_t size)
 				block = request_space(last, size, ALIGNMENT);
 		}
     }
-	count_blocks(alloc->freelist);
     return __builtin_assume_aligned(block->aligned_address, ALIGNMENT);
 }
 

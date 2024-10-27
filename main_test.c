@@ -7,7 +7,6 @@ extern Block *freelist;
 extern int allocated_blocks;
 extern int freed_blocks;
 
-/* Utility functions */
 int ft_strlen(const char *s) {
     int len = 0; 
     while (s[len] != '\0') {
@@ -24,6 +23,59 @@ char *ft_strdup(const char *s) {
     _memcpy_ERMS(new, s, len);
     new[len] = '\0';
     return new;
+}
+char *ft_itoa(int n) {
+	int len = 0;
+	int temp = n;
+	while (temp != 0) {
+		temp /= 10;
+		len++;
+	}
+	char *str = (char *)_malloc(len + 1);
+	if (str == NULL)
+		return NULL;
+	str[len] = '\0';
+	while (n != 0) {
+		str[--len] = n % 10 + '0';
+		n /= 10;
+	}
+	return str;
+}
+
+int is_in_mapped_heap(void *addr) {
+    uintptr_t start, end;
+    char line[256];
+    FILE *maps = fopen("/proc/self/maps", "r");
+
+    if (!maps) {
+        perror("fopen");
+        return 0;
+    }
+
+    uintptr_t addr_val = (uintptr_t)addr;
+    int in_heap = 0;
+
+    while (fgets(line, sizeof(line), maps)) {
+        // Vérifie si la ligne représente un segment anonyme (mmap) en lecture et écriture
+        if (strstr(line, "rw-p") && strstr(line, "00:00") && !strstr(line, "/")) { 
+            sscanf(line, "%lx-%lx", &start, &end);
+            if (addr_val >= start && addr_val < end) {
+                in_heap = 1;
+                break;
+            }
+        }
+    }
+
+    fclose(maps);
+    return in_heap;
+}
+
+void check_address(void *addr) {
+    if (is_in_mapped_heap(addr)) {
+        printf("Oui, l'adresse %p est dans une région allouée via mmap.\n", addr);
+    } else {
+        printf("Non, l'adresse %p n'est pas dans une région allouée via mmap.\n", addr);
+    }
 }
 
 void benchmark_malloc(size_t num_elements) {
@@ -98,7 +150,7 @@ int main() {
     for (int i = 0; i < 20; i++)
         ptr_aligned[i] = i;
     printf("Aligned allocation successful at address %p\n", ptr_aligned);
-
+	check_address(ptr_aligned);	
     if ((uintptr_t)ptr_aligned % 32 == 0)
         printf("Address is correctly aligned to 32 bytes\n");
     else
@@ -124,6 +176,7 @@ int main() {
     end = clock();
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
     printf("Time taken with custom _malloc: %f seconds\n", cpu_time_used);
+	check_address(ptr_custom);
     _free(ptr_custom);
     printf("Deallocation successful for ptr_custom\n\n");
 
@@ -142,6 +195,7 @@ int main() {
     printf("Time taken with standard malloc: %f seconds\n", cpu_time_used);
 	hexdump(ptr_standard, sizeof(int) * 100);
 	printf("Address of ptr_standard: %p\n", ptr_standard);
+	check_address(ptr_standard);
     free(ptr_standard);
     printf("Deallocation successful for ptr_standard\n\n");
 	printf("Allocated blocks: %d\n", allocated_blocks);
@@ -179,6 +233,7 @@ int main() {
 	}
 	printf("custom malloc\n");
 	printf("Address of ptr2: %p\n", ptr2);
+	check_address(ptr2);
 	hexdump(ptr2, sizeof(int) * 100);
 	_free(ptr2);
 
@@ -203,6 +258,7 @@ int main() {
 	for (int i = 0; i < 100; i++)
 		ptr7[i] = i;
 	hexdump(ptr7, sizeof(double) * 100);
+	check_address(ptr7);
 	_free(ptr7);
 	count_blocks(freelist);
 	check_for_leaks();
@@ -210,6 +266,7 @@ int main() {
 	int *ptr6 = (int *)_malloc(sizeof(int) * 1000000);
 	for (int i = 0; i < 1000000; i++)
 		ptr6[i] = i;
+
 	hexdump(ptr6, sizeof(int) * 100);
 	_free(ptr6);
 	count_blocks(freelist);
@@ -224,6 +281,7 @@ int main() {
 	}
 	printf("Duplicated string: %s\n", dup_str2);
 	hexdump(dup_str, ft_strlen(dup_str2));
+	check_address(dup_str2);
 	_free(dup_str2);
 	count_blocks(freelist);
 
@@ -261,5 +319,13 @@ int main() {
 
 	printf("===== Running Modified Benchmark with Custom _malloc and Random Sizes =====\n\n");
 	benchmark_malloc(1000000);
+
+	//test itoa
+	int num = 123456;	
+	char *str_num = ft_itoa(num);
+	printf("Number: %d\n", num);
+	printf("String: %s\n", str_num);
+	_free(str_num);
+
     return 0;
 }

@@ -18,7 +18,7 @@ extern int freed_blocks;
 */
 
 
-__attribute__((hot, always_inline))
+__attribute__((hot, flatten, always_inline))
 inline void coalesce_free_blocks() {
     Block *current = freelist;
     while (current && current->next) {
@@ -53,7 +53,6 @@ inline void _free(void *ptr)
 {
     if (!ptr)
         return;
-	printf("Freeing block at address %p\n", ptr);
     Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
 	if (ptr != block->aligned_address) 
 		ptr = block->aligned_address;	
@@ -70,6 +69,5 @@ inline void _free(void *ptr)
     }
     allocated_blocks--;
 	block->free = 0;
-	count_blocks(freelist);
 }
 
