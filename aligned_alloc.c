@@ -10,9 +10,6 @@ inline void *_aligned_alloc(size_t alignment, size_t size)
         errno = EINVAL;
         return NULL;
     }
-    if (alignment < UNIT) {
-        alignment = UNIT;
-    }
 
     unsigned char *p = _malloc(size + alignment - 1 + sizeof(void*));
     if (!p)

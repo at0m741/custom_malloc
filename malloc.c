@@ -1,10 +1,9 @@
 #include "include.h"
 
-Block *freelist = NULL;
-int allocated_blocks = 0;
-int freed_blocks = 0;
-size_t block_size[] = {16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256};
-Block *bins[BIN_COUNT] = {NULL};
+Block  __attribute__((visibility("hidden")))*freelist = NULL;
+int  __attribute__((visibility("hidden")))allocated_blocks = 0;
+size_t  __attribute__((visibility("hidden")))block_size[] = {16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256};
+Block  __attribute__((visibility("hidden")))*bins[BIN_COUNT] = {NULL};
 Block *is_mmap = NULL;
 
 
@@ -47,7 +46,6 @@ inline void *_malloc(size_t size)
         return NULL;
     size = __builtin_align_up(size, ALIGNMENT); 
     Block *block = NULL;
-	MemoryAllocator *alloc = NULL;
     if (size <= BIN_MAX_SIZE) 
 	{
         int bin_index = size / ALIGNMENT - 1;

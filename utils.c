@@ -3,7 +3,6 @@
 extern Block *freelist;
 extern size_t block_size;
 extern int allocated_blocks;
-extern int freed_blocks;
 extern MemoryAllocator allocator;
 
 void heap_info(void) {
@@ -65,10 +64,9 @@ int count_blocks(Block *list)
 
 void check_for_leaks() 
 {
-	MemoryAllocator *alloc = NULL;
-    if (allocated_blocks != freed_blocks) 
+    if (allocated_blocks != 0) 
         printf("Potential memory leak detected: %d blocks allocated, %d blocks freed.\n",
-               allocated_blocks, freed_blocks);
+               allocated_blocks, 0);
     else
         printf("No memory leaks detected.\n");
 }

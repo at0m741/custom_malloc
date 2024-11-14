@@ -5,7 +5,6 @@
 
 extern Block *freelist;
 extern int allocated_blocks;
-extern int freed_blocks;
 
 int ft_strlen(const char *s) {
     int len = 0; 
@@ -199,7 +198,6 @@ int main() {
     free(ptr_standard);
     printf("Deallocation successful for ptr_standard\n\n");
 	printf("Allocated blocks: %d\n", allocated_blocks);
-	printf("Freed blocks: %d\n", freed_blocks);
 	check_for_leaks();
 	printf("---- Benchmark with custom _aligned_alloc ----\n");
 	start = clock();
@@ -220,8 +218,7 @@ int main() {
 
     printf("===== Memory Leak Check =====\n\n");
     printf("Number of blocks allocated: %d\n", allocated_blocks);
-    printf("Number of blocks freed: %d\n", freed_blocks);
-    if (allocated_blocks == freed_blocks)
+    if (allocated_blocks == 0)
         printf("No memory leaks detected\n");
     else
         printf("Memory leak detected\n");

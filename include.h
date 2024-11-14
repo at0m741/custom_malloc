@@ -99,7 +99,6 @@ typedef struct Block {
 typedef struct MemoryAllocator {
     Block *freelist;
     int allocated_blocks;
-    int freed_blocks;
 	size_t block_size;
     Block *bins[BIN_COUNT];
 } MemoryAllocator;
@@ -119,7 +118,6 @@ void coalesce_free_blocks();
 void *find_free_block(size_t size, size_t alignment); 
 void split_block(Block *block, size_t size, size_t alignment);
 void initialize_allocator();
-void initialize_memory_pool();
 /* memory allocation */
 
 void *request_space_mmap(size_t size, size_t alignment);
@@ -139,31 +137,7 @@ void hexdump(void *ptr, size_t size);
 int count_blocks(Block *list); 
 
 #define __vector __attribute__((vector_size(16) ))
-extern int allocated_blocks;
 
-__attribute__((always_inline, hot))
-static inline void *__mm_malloc(size_t _size, size_t _alignment) {
-	size_t _vec_align = sizeof(__vector float);	
-
-	size_t _malloc_align = (sizeof (void *) + sizeof (void *));
-	void *_ptr;
-
-	if (_alignment == _malloc_align && _alignment == _vec_align)
-		return _malloc(_size);
-	if (_alignment < _vec_align)
-		_alignment = _vec_align;
-	if (_alignment < _malloc_align)
-		_alignment = _malloc_align;
-
-	if (posix_memalign(&_ptr, _alignment, _size) == 0)
-	{
-		allocated_blocks++;
-		return _ptr;
-	}
-
-	else
-		return NULL;
-}
 
 
 #endif

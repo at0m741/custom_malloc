@@ -3,7 +3,6 @@
 extern Block *freelist;
 extern size_t block_size;
 extern int allocated_blocks;
-extern int freed_blocks;
 
 /*
 	* Function to coalesce free blocks
@@ -57,7 +56,7 @@ inline void _free(void *ptr)
 	if (ptr != block->aligned_address) 
 		ptr = block->aligned_address;	
 
-    if (block->is_mmap) 
+    if (__builtin_expect(block->size > block_size, 0)) 
 	{
         size_t alignment_mask = sysconf(_SC_PAGESIZE) - 1;
         size_t total_size = block->size + sizeof(Block) + alignment_mask;

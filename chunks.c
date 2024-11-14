@@ -15,20 +15,6 @@ extern int allocated_blocks;
 static uint32_t bitmap[BITMAP_SIZE / 32]; 
 static void *memory_pool = NULL;
 
-__attribute__((hot, flatten))
-inline void initialize_memory_pool() 
-{
-    size_t total_size = MEMORY_POOL_SIZE;
-    memory_pool = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (memory_pool == MAP_FAILED) 
-    {
-        perror("mmap failed");
-        memory_pool = NULL;
-    } 
-    else
-        memset(bitmap, 0, sizeof(bitmap)); 
-}
 
 __attribute__((hot, flatten))
 inline void *find_free_block(size_t size, size_t alignment) 

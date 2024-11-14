@@ -1,13 +1,13 @@
 NAME = custom_alloc
 SO_NAME = ./libft_malloc_x86_64_Linux.so
 CC = clang
+CFLAGS = -mavx2 -fPIC -fPIE -mprefer-vector-width=256 -fstack-protector -O3 -Wunused-function -Wunused-variable -Wunused 
 
-CFLAGS = -O3 -mavx2 -fPIC  -mprefer-vector-width=256# -fPIC est nécessaire pour les bibliothèques partagées
-
+LDFLAGS = -Wl,-z,relro,-z,now
 SRC = $(wildcard *.c)
-
 OBJ_DIR = objs
 OBJ = $(SRC:%.c=$(OBJ_DIR)/%.o)
+OBJ_NO_MAIN = $(filter-out $(OBJ_DIR)/main.o, $(OBJ))
 
 ifeq ($(DEBUG), true)
 	CFLAGS += -D DEBUG
@@ -22,10 +22,10 @@ $(OBJ_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(NAME): $(OBJ)
-	$(CC) $(CFLAGS) -o $(NAME) $(OBJ)
+	$(CC) $(CFLAGS) $(LDFLAGS) -pie -o $(NAME) $(OBJ)
 
-$(SO_NAME): $(OBJ)
-	$(CC) -shared -o $(SO_NAME) $(OBJ)
+$(SO_NAME): $(OBJ_NO_MAIN)
+	$(CC) -shared -fPIC $(LDFLAGS) -o $(SO_NAME) $(OBJ_NO_MAIN)
 
 clean:
 	rm -f $(OBJ_DIR)/*.o
