@@ -38,6 +38,7 @@ char *ft_itoa(int n) {
 		str[--len] = n % 10 + '0';
 		n /= 10;
 	}
+	count_blocks(freelist);
 	return str;
 }
 
@@ -71,6 +72,8 @@ void test_random_alloc_free() {
             _free(allocations[i]);
         }
     }
+	count_blocks(freelist);
+
 
     printf("Random alloc/free test passed.\n");
 }
@@ -91,6 +94,7 @@ void test_small_allocations() {
     for (size_t i = 0; i < NUM_SMALL_ALLOCS; i++) {
         _free(allocations[i]);
     }
+	count_blocks(freelist);
     printf("Small allocations test passed.\n");
 }
 
@@ -110,6 +114,7 @@ void test_large_allocations() {
     for (size_t i = 0; i < NUM_LARGE_ALLOCS; i++) {
         _free(allocations[i]);
     }
+	count_blocks(freelist);
     printf("Large allocations test passed.\n");
 }
 
@@ -120,15 +125,16 @@ void test_alignment() {
 
     for (size_t i = 0; i < sizeof(alignments) / sizeof(alignments[0]); i++) {
         for (size_t j = 0; j < sizeof(sizes) / sizeof(sizes[0]); j++) {
-            void *ptr = _malloc(sizes[j]);
+            void *ptr = _aligned_alloc(sizes[j], 32);
             if ((uintptr_t)ptr % alignments[i] != 0) {
                 printf("Error: Pointer %p is not aligned to %zu bytes\n", ptr, alignments[i]);
             } else {
                 printf("Success: Pointer %p is aligned to %zu bytes\n", ptr, alignments[i]);
             }
-            _free(ptr);
+            _aligned_free(ptr);
         }
     }
+	count_blocks(freelist);
 }
 
 
@@ -146,7 +152,6 @@ int is_in_mapped_heap(void *addr) {
     int in_heap = 0;
 
     while (fgets(line, sizeof(line), maps)) {
-        // Vérifie si la ligne représente un segment anonyme (mmap) en lecture et écriture
         if (strstr(line, "rw-p") && strstr(line, "00:00") && !strstr(line, "/")) { 
             sscanf(line, "%lx-%lx", &start, &end);
             if (addr_val >= start && addr_val < end) {
@@ -186,7 +191,7 @@ void benchmark_malloc(size_t num_elements) {
     time_taken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("Time taken with custom _malloc: %f seconds\n", time_taken);
     _free(ptr_custom);
-
+	
     printf("---- Benchmark with standard malloc ----\n");
     clock_gettime(CLOCK_MONOTONIC, &start);
     int *ptr_standard = (int *)malloc(sizeof(int) * num_elements);
@@ -201,6 +206,8 @@ void benchmark_malloc(size_t num_elements) {
     time_taken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("Time taken with standard malloc: %f seconds\n", time_taken);
     free(ptr_standard);
+	check_alignment(ptr_standard);
+	count_blocks(freelist);
 }
 
 int main() {
@@ -249,64 +256,6 @@ int main() {
     _aligned_free(ptr_aligned);
     printf("Deallocation successful for ptr_aligned\n\n");
 
-    printf("===== Performance Benchmark =====\n\n");
-    const size_t num_elements = 1000000;
-    clock_t start, end;
-    double cpu_time_used;
-
-    printf("---- Benchmark with custom _malloc ----\n");
-    start = clock();
-    int *ptr_custom = (int *)_malloc(sizeof(int) * num_elements);
-    if (ptr_custom == NULL) {
-        printf("Allocation failed for ptr_custom\n");
-        return 1;
-    }
-    for (size_t i = 0; i < num_elements; i++)
-        ptr_custom[i] = i;
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Time taken with custom _malloc: %f seconds\n", cpu_time_used);
-	check_address(ptr_custom);
-    _free(ptr_custom);
-    printf("Deallocation successful for ptr_custom\n\n");
-
-    printf("---- Benchmark with standard malloc ----\n");
-    start = clock();
-    int *ptr_standard = (int *)malloc(sizeof(int) * num_elements);
-	printf("allocated_blocks: %d\n", allocated_blocks);
-    if (ptr_standard == NULL) {
-        printf("Allocation failed for ptr_standard\n");
-        return 1;
-    }
-    for (size_t i = 0; i < num_elements; i++)
-        ptr_standard[i] = i;
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Time taken with standard malloc: %f seconds\n", cpu_time_used);
-	hexdump(ptr_standard, sizeof(int) * 100);
-	printf("Address of ptr_standard: %p\n", ptr_standard);
-	check_address(ptr_standard);
-    free(ptr_standard);
-    printf("Deallocation successful for ptr_standard\n\n");
-	printf("Allocated blocks: %d\n", allocated_blocks);
-	check_for_leaks();
-	printf("---- Benchmark with custom _aligned_alloc ----\n");
-	start = clock();
-	int *ptr_aligned_custom = (int *)_aligned_alloc(32, sizeof(int) * num_elements);
-	if (ptr_aligned_custom == NULL) {
-		printf("Aligned allocation failed for ptr_aligned_custom\n");
-		return 1;
-	}
-	for (size_t i = 0; i < num_elements; i++)
-		ptr_aligned_custom[i] = i;
-	end = clock();
-	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-	printf("Time taken with custom _aligned_alloc: %f seconds\n", cpu_time_used);
-	_aligned_free(ptr_aligned_custom);
-	printf("Deallocation successful for ptr_aligned_custom\n\n");
-	
-
-
     printf("===== Memory Leak Check =====\n\n");
     printf("Number of blocks allocated: %d\n", allocated_blocks);
     if (allocated_blocks == 0)
@@ -334,6 +283,7 @@ int main() {
 	printf("Address of ptr3: %p\n", ptr3);
 	hexdump(ptr3, sizeof(int) * 100);
 	free(ptr3);
+	check_for_leaks();
 
 	int *ptr4 = (int *)_malloc(sizeof(int) * 100);
 	_free(ptr4);
@@ -374,41 +324,10 @@ int main() {
 	count_blocks(freelist);
 
 
-	start = clock();
-	int *ptr_custom2 = (int *)_malloc(sizeof(int) * num_elements);
-	if (ptr_custom2 == NULL) {
-		printf("Allocation failed for ptr_custom2\n");
-		return 1;
-	}
-	for (size_t i = 0; i < num_elements; i++)
-		ptr_custom2[i] = i;
-	end = clock();
-	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-	printf("Time taken with custom _malloc: %f seconds\n", cpu_time_used);
-	_free(ptr_custom2);
-	count_blocks(freelist);
-	check_for_leaks();
-
-	start = clock();
-	int *ptr_standard2 = (int *)malloc(sizeof(int) * num_elements);
-	if (ptr_standard2 == NULL) {
-		printf("Allocation failed for ptr_standard2\n");
-		return 1;
-	}
-	for (size_t i = 0; i < num_elements; i++)
-		ptr_standard2[i] = i;
-	end = clock();
-	cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-	printf("Time taken with standard malloc: %f seconds\n", cpu_time_used);
-	free(ptr_standard2);
-	count_blocks(freelist);
-	check_for_leaks();
-
 
 	printf("===== Running Modified Benchmark with Custom _malloc and Random Sizes =====\n\n");
-	benchmark_malloc(1000000);
+	benchmark_malloc(10000000);
 
-	//test itoa
 	int num = 123456;	
 	char *str_num = ft_itoa(num);
 	printf("Number: %d\n", num);
@@ -419,5 +338,8 @@ int main() {
 	test_alignment();
 	test_large_allocations();
 	test_small_allocations();
+
+	test_alignment();
+
     return 0;
 }

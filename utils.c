@@ -5,29 +5,40 @@ extern size_t block_size;
 extern int allocated_blocks;
 extern MemoryAllocator allocator;
 
+#include <stdio.h>
+
+// Définition des codes de couleurs ANSI
+#define RESET "\033[0m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+#define CYAN "\033[36m"
+#define BOLD "\033[1m"
+
 void heap_info(void) {
     static long nb_call = 0;
     long total_alloc = 0;
 
+    printf(BOLD CYAN "Heap Info #%ld:\n" RESET, nb_call);
 
-    printf("Heap Info #%ld:\n", nb_call);
-    
     for (Block *heap = freelist; heap; heap = heap->next) {
-        printf("Heap: %p - %p\n", (void *)heap, (void *)((char *)heap + heap->size));
-        printf("  Size: %zu\n", heap->size);
-        printf("  Free space: %d\n", heap->free);
-		printf("  Aligned address: %p\n", heap->aligned_address);
-		printf("  Is mmap: %d\n", heap->is_mmap);
-        
-        if (heap->free) {
-            printf("  Freed: yes\n");
+        printf(BOLD BLUE "Heap: %p - %p\n" RESET, (void *)heap, (void *)((char *)heap + heap->size));
+        printf("  " YELLOW "Size: " RESET "%zu\n", heap->size);
+        printf("  " YELLOW "Free space: " RESET "%d\n", heap->free);
+        printf("  " YELLOW "Aligned address: " RESET "%p\n", heap->aligned_address);
+        printf("  " YELLOW "Is mmap: " RESET "%d\n", heap->is_mmap);
+
+        if (allocated_blocks == 0) {
+            printf("  " GREEN "Freed: yes\n" RESET);
         } else {
-            printf("  Freed: no\n");
-            total_alloc += heap->size; 
+            printf("  " RED "Freed: no\n" RESET);
+            total_alloc += heap->size;
+			printf(RED "total_alloc %ld\n" RED, total_alloc);
         }
     }
 
-    printf("Total allocated memory: %ld bytes\n", total_alloc);
+    printf(BOLD CYAN "Total allocated memory: %ld bytes\n" RESET, total_alloc);
 
     nb_call++;
 }
@@ -35,11 +46,11 @@ void heap_info(void) {
 size_t print_blocks(Block *block) {
     size_t total_alloc_block = 0;
     while (block) {
-        printf("%p - %p : %zu bytes\n", 
+        printf(BLUE "%p - %p" RESET " : " YELLOW "%zu bytes\n" RESET, 
                block, 
                (void *)block + block->size, 
                block->size);
-        
+
         if (!block->free) {
             total_alloc_block += block->size;
         }
@@ -50,25 +61,25 @@ size_t print_blocks(Block *block) {
 
 int count_blocks(Block *list) 
 {
-	Block *current = list;
-	int count = 0;
-	while (current != NULL) {
-		count++;
-		current = current->next;
-	}
-	printf("Number of blocks: %d\n", count);
-	heap_info();
-	print_blocks(list);
-	return count;
+    Block *current = list;
+    int count = 0;
+    while (current != NULL) {
+        count++;
+        current = current->next;
+    }
+    printf(CYAN "Number of blocks: " RESET "%d\n", count);
+    heap_info();
+    print_blocks(list);
+    return count;
 }
 
 void check_for_leaks() 
 {
     if (allocated_blocks != 0) 
-        printf("Potential memory leak detected: %d blocks allocated, %d blocks freed.\n",
+        printf(RED "Potential memory leak detected: " RESET "%d blocks allocated, %d blocks freed.\n",
                allocated_blocks, 0);
     else
-        printf("No memory leaks detected.\n");
+        printf(GREEN "No memory leaks detected.\n" RESET);
 }
 
 void check_alignment(void *ptr) 

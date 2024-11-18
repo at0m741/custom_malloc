@@ -17,55 +17,63 @@ static void *memory_pool = NULL;
 
 
 __attribute__((hot, flatten))
-inline void *find_free_block(size_t size, size_t alignment) 
-{
-if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
+
+void *find_free_block(size_t size, size_t alignment) {
+    if (__builtin_expect(!memory_pool || size == 0 || size > MEMORY_POOL_SIZE, 0))
         return NULL;
 
     size_t units_needed = (size + BLOCK_UNIT_SIZE - 1) / BLOCK_UNIT_SIZE;
 
     __m256i mask = _mm256_set1_epi32(0xFFFFFFFF);
-    for (size_t i = 0; i < BITMAP_SIZE / 256; i++) 
-    {
-        __m256i bitmap_chunk =		_mm256_loadu_si256((__m256i*)&bitmap[i * 8]);
-        __m256i inverted_chunk =	_mm256_andnot_si256(bitmap_chunk, mask);
-        int bitmask =				_mm256_movemask_epi8(inverted_chunk);
-        if (bitmask != 0) 
-        {
-            for (int j = 0; j < 8; j++) 
-            {
-                uint32_t bits = ~bitmap[i * 8 + j]; 
-                if (bits) 
-                {
+    for (size_t i = 0; i < BITMAP_SIZE / 256; i++) {   
+        _mm_prefetch((const char*)&bitmap[(i + 1) * 8], _MM_HINT_NTA); 
+
+        __m256i bitmap_chunk = _mm256_loadu_si256((__m256i*)&bitmap[i * 8]);
+        __m256i inverted_chunk = _mm256_andnot_si256(bitmap_chunk, mask);
+        int bitmask = _mm256_movemask_epi8(inverted_chunk);
+
+        if (__builtin_expect(bitmask != 0, 1)) {
+            for (int j = 0; j < 8; j++) {
+                uint32_t bits = ~bitmap[i * 8 + j];
+
+                if (__builtin_expect(bits != 0, 1)) {
                     int free_bit = __builtin_ctz(bits);
                     size_t start = (i * 256) + (j * 32) + free_bit;
-                    if (start + units_needed > BITMAP_SIZE)
+
+                    if (__builtin_expect(start + units_needed > BITMAP_SIZE, 0))
                         return NULL;
 
                     int enough_space = 1;
-                    for (size_t k = 0; k < units_needed; k++) 
-                    {
-                        size_t idx = start + k;
-                        if (bitmap[idx / 32] & (1U << (idx % 32))) 
-                        {
+                    size_t idx;
+                    for (size_t k = 0; k < units_needed; k++) {
+                        idx = start + k;
+                        if (__builtin_expect(bitmap[idx / 32] & (1U << (idx % 32)), 0)) {
                             enough_space = 0;
                             break;
                         }
                     }
 
-                    if (enough_space) 
-                    {
-                        for (size_t k = 0; k < units_needed; k++) 
-                        {
-                            size_t idx = start + k;
-                            bitmap[idx / 32] |= (1U << (idx % 32));
+                    if (__builtin_expect(enough_space, 1)) {
+                        for (size_t k = 0; k < units_needed; k++) {
+                            idx = start + k;
+                            bitmap[idx / 32] |= (1U << (idx & 31));
                         }
 
                         uintptr_t addr = (uintptr_t)memory_pool + start * BLOCK_UNIT_SIZE;
-                        uintptr_t aligned_addr = align_up(addr, alignment);
-						if (!align_up(aligned_addr, alignment))
-							printf("unaligned\n");
-                        return (void *)aligned_addr;
+                        uintptr_t aligned_addr = align_up(addr + sizeof(Block), alignment);
+
+                        if (__builtin_expect(aligned_addr + size > (uintptr_t)memory_pool + MEMORY_POOL_SIZE, 0))
+                            return NULL;
+
+                        Block *block = (Block *)(aligned_addr - sizeof(Block));
+                        block->size = size;
+                        block->free = 0;
+                        block->next = NULL;
+                        block->is_mmap = 0;
+                        block->aligned_address = (void *)aligned_addr;
+
+                        allocated_blocks++;
+                        return block->aligned_address;
                     }
                 }
             }
@@ -73,7 +81,6 @@ if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
     }
     return NULL;
 }
-
 /*
 	* Function to split a block into two blocks
 	* block: block to be split

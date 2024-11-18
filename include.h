@@ -28,7 +28,7 @@
 #define __builtin_align_up(x, align) (((x) + (align - 1)) & ~(align - 1))
 #endif
 
-#define ALIGNMENT 32
+#define ALIGNMENT 16
 #define ALIGN(size, alignment) (((size) + (alignment - 1)) & ~(alignment - 1))
 #define MMAP_THRESHOLD (128 * 1024) 
 #define MMAP_SIZE (128 * 1024)
@@ -39,7 +39,7 @@
 #define CACHE_SIZE_L2 262144
 #define UNIT 16
 #define BITMAP_SIZE 1024   
-#define BLOCK_UNIT_SIZE 64  
+#define BLOCK_UNIT_SIZE 32 
 #define MEMORY_POOL_SIZE (BITMAP_SIZE * BLOCK_UNIT_SIZE)
 #define BLOCK_SIZE ALIGN(sizeof(Block), ALIGNMENT)
 #define MAX_BLOCK_SIZE 1024 * 1024
