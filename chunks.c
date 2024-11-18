@@ -62,7 +62,9 @@ if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
                         }
 
                         uintptr_t addr = (uintptr_t)memory_pool + start * BLOCK_UNIT_SIZE;
-                        uintptr_t aligned_addr = __builtin_align_up(addr, alignment); 
+                        uintptr_t aligned_addr = align_up(addr, alignment);
+						if (!align_up(aligned_addr, alignment))
+							printf("unaligned\n");
                         return (void *)aligned_addr;
                     }
                 }
@@ -84,7 +86,7 @@ inline void split_block(Block *block, size_t size, size_t alignment)
 {
     size_t remaining_size = block->size - size - BLOCK_SIZE;
     uintptr_t new_block_address = (uintptr_t)block + BLOCK_SIZE + size;
-    uintptr_t aligned_new_block_address = __builtin_align_up(new_block_address, alignment);
+    uintptr_t aligned_new_block_address = align_up(new_block_address, alignment);
     
     if (remaining_size >= BLOCK_SIZE) 
 	{
@@ -139,7 +141,7 @@ Block *request_space(Block *last, size_t size, size_t alignment)
 	}
 
     uintptr_t raw_addr = (uintptr_t)request;
-    uintptr_t aligned_addr = __builtin_align_up(raw_addr + sizeof(Block) + sizeof(Block *), alignment); 
+    uintptr_t aligned_addr = align_up(raw_addr + sizeof(Block) + sizeof(Block *), alignment); 
 
     if (aligned_addr + size > raw_addr + total_size) 
 	{
@@ -193,7 +195,7 @@ void *request_space_mmap(size_t size, size_t alignment)
 	}
 
     uintptr_t raw_addr = (uintptr_t)mapped_memory;
-    uintptr_t aligned_addr = __builtin_align_up(raw_addr + BLOCK_SIZE, alignment); 
+    uintptr_t aligned_addr = align_up(raw_addr + BLOCK_SIZE, alignment); 
     Block *block = (Block *)(aligned_addr - sizeof(Block));
 
     block->size = size;

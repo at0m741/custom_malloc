@@ -16,7 +16,7 @@ inline void *_aligned_alloc(size_t alignment, size_t size)
         return NULL;
 
     uintptr_t addr = (uintptr_t)(p + sizeof(void*));
-    uintptr_t aligned_addr = __builtin_align_up(addr, alignment);
+    uintptr_t aligned_addr = align_up(addr, alignment);
 
     ((void**)aligned_addr)[-1] = p;
 

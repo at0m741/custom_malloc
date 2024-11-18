@@ -1,7 +1,7 @@
 NAME = custom_alloc
 SO_NAME = ./libft_malloc_x86_64_Linux.so
 CC = clang
-CFLAGS = -mavx2 -fPIC -fPIE -mprefer-vector-width=256 -fstack-protector -O3 -Wunused-function -Wunused-variable -Wunused 
+CFLAGS = -mavx2 -fPIC -fPIE -mprefer-vector-width=256 -fstack-protector  -Wunused-function -Wunused-variable -Wunused 
 
 LDFLAGS = -Wl,-z,relro,-z,now
 SRC = $(wildcard *.c)

@@ -41,6 +41,97 @@ char *ft_itoa(int n) {
 	return str;
 }
 
+#define NUM_SMALL_ALLOCS 1000
+#define NUM_LARGE_ALLOCS 100
+#define MAX_ALLOCATION_SIZE (1 << 20) // 1 MiB
+
+void test_random_alloc_free() {
+    printf("\n== Random Alloc/Free Test ==\n");
+    srand((unsigned int)time(NULL));
+    void *allocations[NUM_SMALL_ALLOCS];
+    memset(allocations, 0, sizeof(allocations));
+
+    for (size_t i = 0; i < NUM_SMALL_ALLOCS * 10; i++) {
+        size_t index = rand() % NUM_SMALL_ALLOCS;
+        if (allocations[index]) {
+            _free(allocations[index]);
+            allocations[index] = NULL;
+        } else {
+            size_t size = (rand() % 256) + 1;
+            allocations[index] = _malloc(size);
+            if (!allocations[index]) {
+                fprintf(stderr, "Error: Random allocation failed\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < NUM_SMALL_ALLOCS; i++) {
+        if (allocations[i]) {
+            _free(allocations[i]);
+        }
+    }
+
+    printf("Random alloc/free test passed.\n");
+}
+
+void test_small_allocations() {
+    printf("\n== Small Allocations Test ==\n");
+    void *allocations[NUM_SMALL_ALLOCS];
+    for (size_t i = 0; i < NUM_SMALL_ALLOCS; i++) {
+        size_t size = (i % 64) + 1; // Sizes between 1 and 64 bytes
+        allocations[i] = _malloc(size);
+        if (!allocations[i]) {
+            fprintf(stderr, "Error: Failed to allocate %zu bytes\n", size);
+            exit(EXIT_FAILURE);
+        }
+        memset(allocations[i], 0xAA, size); // Fill with dummy data
+    }
+
+    for (size_t i = 0; i < NUM_SMALL_ALLOCS; i++) {
+        _free(allocations[i]);
+    }
+    printf("Small allocations test passed.\n");
+}
+
+void test_large_allocations() {
+    printf("\n== Large Allocations Test ==\n");
+    void *allocations[NUM_LARGE_ALLOCS];
+    for (size_t i = 0; i < NUM_LARGE_ALLOCS; i++) {
+        size_t size = 1024 * (i + 1); // Sizes increasing from 1 KiB to NUM_LARGE_ALLOCS KiB
+        allocations[i] = _malloc(size);
+        if (!allocations[i]) {
+            fprintf(stderr, "Error: Failed to allocate %zu bytes\n", size);
+            exit(EXIT_FAILURE);
+        }
+        memset(allocations[i], 0xBB, size); // Fill with dummy data
+    }
+
+    for (size_t i = 0; i < NUM_LARGE_ALLOCS; i++) {
+        _free(allocations[i]);
+    }
+    printf("Large allocations test passed.\n");
+}
+
+
+void test_alignment() {
+    size_t alignments[] = {16, 32, 64, 128, 256, 512, 1024};
+    size_t sizes[] = {128, 256, 512, 1024};
+
+    for (size_t i = 0; i < sizeof(alignments) / sizeof(alignments[0]); i++) {
+        for (size_t j = 0; j < sizeof(sizes) / sizeof(sizes[0]); j++) {
+            void *ptr = _malloc(sizes[j]);
+            if ((uintptr_t)ptr % alignments[i] != 0) {
+                printf("Error: Pointer %p is not aligned to %zu bytes\n", ptr, alignments[i]);
+            } else {
+                printf("Success: Pointer %p is aligned to %zu bytes\n", ptr, alignments[i]);
+            }
+            _free(ptr);
+        }
+    }
+}
+
+
 int is_in_mapped_heap(void *addr) {
     uintptr_t start, end;
     char line[256];
@@ -324,5 +415,9 @@ int main() {
 	printf("String: %s\n", str_num);
 	_free(str_num);
 
+	test_random_alloc_free();
+	test_alignment();
+	test_large_allocations();
+	test_small_allocations();
     return 0;
 }

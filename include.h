@@ -28,7 +28,7 @@
 #define __builtin_align_up(x, align) (((x) + (align - 1)) & ~(align - 1))
 #endif
 
-#define ALIGNMENT 16
+#define ALIGNMENT 32
 #define ALIGN(size, alignment) (((size) + (alignment - 1)) & ~(alignment - 1))
 #define MMAP_THRESHOLD (128 * 1024) 
 #define MMAP_SIZE (128 * 1024)
@@ -103,7 +103,10 @@ typedef struct MemoryAllocator {
     Block *bins[BIN_COUNT];
 } MemoryAllocator;
 
-
+__attribute__((always_inline))
+static inline uintptr_t align_up(uintptr_t addr, size_t alignment) {
+    return (addr + alignment - 1) & ~(alignment - 1);
+}
 
 /* memory utils */
 
