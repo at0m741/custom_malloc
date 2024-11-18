@@ -43,7 +43,7 @@ char *ft_itoa(int n) {
 
 #define NUM_SMALL_ALLOCS 1000
 #define NUM_LARGE_ALLOCS 100
-#define MAX_ALLOCATION_SIZE (1 << 20) // 1 MiB
+#define MAX_ALLOCATION_SIZE (1 << 20)
 
 void test_random_alloc_free() {
     printf("\n== Random Alloc/Free Test ==\n");
@@ -79,13 +79,13 @@ void test_small_allocations() {
     printf("\n== Small Allocations Test ==\n");
     void *allocations[NUM_SMALL_ALLOCS];
     for (size_t i = 0; i < NUM_SMALL_ALLOCS; i++) {
-        size_t size = (i % 64) + 1; // Sizes between 1 and 64 bytes
+        size_t size = (i % 64) + 1; 
         allocations[i] = _malloc(size);
         if (!allocations[i]) {
             fprintf(stderr, "Error: Failed to allocate %zu bytes\n", size);
             exit(EXIT_FAILURE);
         }
-        memset(allocations[i], 0xAA, size); // Fill with dummy data
+        memset(allocations[i], 0xAA, size); 
     }
 
     for (size_t i = 0; i < NUM_SMALL_ALLOCS; i++) {
@@ -98,13 +98,13 @@ void test_large_allocations() {
     printf("\n== Large Allocations Test ==\n");
     void *allocations[NUM_LARGE_ALLOCS];
     for (size_t i = 0; i < NUM_LARGE_ALLOCS; i++) {
-        size_t size = 1024 * (i + 1); // Sizes increasing from 1 KiB to NUM_LARGE_ALLOCS KiB
+        size_t size = 1024 * (i + 1); 
         allocations[i] = _malloc(size);
         if (!allocations[i]) {
             fprintf(stderr, "Error: Failed to allocate %zu bytes\n", size);
             exit(EXIT_FAILURE);
         }
-        memset(allocations[i], 0xBB, size); // Fill with dummy data
+        memset(allocations[i], 0xBB, size); 
     }
 
     for (size_t i = 0; i < NUM_LARGE_ALLOCS; i++) {
