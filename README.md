@@ -1,2 +1,2 @@
 # custom_malloc
-A tiny custom allocator
+A tiny custom allocator.
