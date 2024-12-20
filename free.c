@@ -63,10 +63,9 @@ inline void _free(void *ptr)
 		total_size = __builtin_align_up(total_size, ALIGNMENT);
         munmap((void *)block, total_size);
     } else {
-        block->free = 1;
 		coalesce_free_blocks();
+		block->free = 1;
     }
     allocated_blocks--;
-	block->free = 0;
 }
 

@@ -3,7 +3,7 @@ SO_NAME = ./libft_malloc_x86_64_Linux.so
 CC = clang
 CFLAGS = -mavx2 -fPIC -fPIE -mprefer-vector-width=256 -fstack-protector -O3  -Wunused-function -Wunused-variable -Wunused 
 
-LDFLAGS = -Wl,-z,relro,-z,now
+LDFLAGS = -Wl
 SRC = $(wildcard *.c)
 OBJ_DIR = objs
 OBJ = $(SRC:%.c=$(OBJ_DIR)/%.o)

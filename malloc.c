@@ -20,7 +20,6 @@ void *_realloc(void *ptr, size_t new_size)
         _free(ptr);
         return NULL;
     }
-	MemoryAllocator *alloc = NULL;
     if (ptr == NULL) 
         return _malloc(new_size);
 
@@ -32,7 +31,7 @@ void *_realloc(void *ptr, size_t new_size)
     void *new_ptr = _malloc(new_size);
     if (new_ptr == NULL)
         return NULL; 
-	alloc->allocated_blocks++;
+	allocated_blocks++;
     memcpy(new_ptr, ptr, block->size);
     _free(ptr);
 

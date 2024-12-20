@@ -187,7 +187,6 @@ __attribute__((hot))
 void *request_space_mmap(size_t size, size_t alignment) 
 {
     size_t total_size = size + BLOCK_SIZE + alignment - 1;
-	printf("Total size: %zu\n", total_size);
     void *mapped_memory = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                                MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
