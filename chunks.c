@@ -23,7 +23,7 @@ void *find_free_block(size_t size, size_t alignment) {
         return NULL;
 
     size_t units_needed = (size + BLOCK_UNIT_SIZE - 1) / BLOCK_UNIT_SIZE;
-
+	printf("DEBUG");
     __m256i mask = _mm256_set1_epi32(0xFFFFFFFF);
     for (size_t i = 0; i < BITMAP_SIZE / 256; i++) {   
         _mm_prefetch((const char*)&bitmap[(i + 1) * 8], _MM_HINT_NTA); 
@@ -73,6 +73,8 @@ void *find_free_block(size_t size, size_t alignment) {
                         block->aligned_address = (void *)aligned_addr;
 
                         allocated_blocks++;
+						printf("Allocated block at %p\n", block->aligned_address);
+						printf("Allocated blocks: %d\n", allocated_blocks);
                         return block->aligned_address;
                     }
                 }
