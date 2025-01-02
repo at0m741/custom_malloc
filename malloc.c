@@ -1,9 +1,9 @@
 #include "malloc.h"
 
-static uint32_t bitmap[BITMAP_SIZE / 32] = {0}; 
-static void *memory_pool = NULL;
-Block *freelist = NULL;
-static Block *bins[NUM_BINS] = {NULL};
+static uint32_t __attribute__((__visibility__("hidden"))) bitmap[BITMAP_SIZE / 32] = {0}; 
+static void *	__attribute__((__visibility__("hidden"))) memory_pool = NULL;
+Block			__attribute__((__visibility__("hidden"))) *freelist = NULL;
+static Block	__attribute__((__visibility__("hidden"))) *bins[NUM_BINS] = {NULL};
 
 __attribute__((constructor))
 static inline void initialize_memory_pool() {
@@ -59,7 +59,6 @@ static inline void insert_sorted(Block *block) {
     }
 }
 
-__attribute__((hot))
 static void *find_free_block(size_t size, size_t alignment) {
     if (!memory_pool || size == 0 || size > MEMORY_POOL_SIZE)
         return NULL;
@@ -300,6 +299,7 @@ void *_malloc(size_t size) {
 
     return block->aligned_address;
 }
+
 void _free(void *ptr) {
 	improved_free(ptr);
 	coalesce_free_blocks();
@@ -307,10 +307,10 @@ void _free(void *ptr) {
 
 void *my_realloc(void *ptr, size_t size) {
     if (!ptr) 
-        return _malloc(size); 
+        return malloc(size); 
     
 	if (size == 0) {
-        _free(ptr); 
+        free(ptr); 
         return NULL;
     }
 
