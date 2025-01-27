@@ -1,7 +1,7 @@
 # custom_malloc.  
-A tiny custom allocator...  
+A tiny and optimized custom allocator in pure C based on malloc
 
-(actually the better version is in the rework branch)...  
+(Atm the better version is in the rework branch)...  
 
 ## TODO.  
 - Threading (need to be thread safe over pthread and MPI).  
