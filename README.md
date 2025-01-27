@@ -3,7 +3,7 @@ A tiny custom allocator.
 
 (actually te better version is in rework branch).
 
-#TODO
+# TODO
 -Threading (need to be thread safe over pthread and MPI)
 -Branching optimization and bin research
 -Security mitigations 
