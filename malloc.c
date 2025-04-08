@@ -4,7 +4,7 @@ static uint32_t __attribute__((__visibility__("hidden"))) bitmap[BITMAP_SIZE / 3
 static void *	__attribute__((__visibility__("hidden"))) memory_pool = NULL;
 Block			__attribute__((__visibility__("hidden"))) *freelist = NULL;
 static Block	__attribute__((__visibility__("hidden"))) *bins[NUM_BINS] = {NULL};
-
+#define MAX_BIN_SIZE 512
 __attribute__((constructor))
 static inline void initialize_memory_pool() {
     memory_pool = mmap(NULL, MEMORY_POOL_SIZE, PROT_READ | PROT_WRITE,
@@ -19,6 +19,8 @@ static inline void initialize_memory_pool() {
     freelist->_free = 1;
     freelist->is_mmap = 0;
     freelist->next = NULL;
+	freelist->start_canary = CANARY_START_VALUE;
+	freelist->end_canary = CANARY_END_VALUE;
     freelist->aligned_address = (void *)((uintptr_t)memory_pool + BLOCK_SIZE);
 }
 
@@ -67,8 +69,8 @@ static void *find_free_block(size_t size, size_t alignment) {
     __m256i mask = _mm256_set1_epi32(0xFFFFFFFF);
 
     for (size_t i = 0; i < BITMAP_SIZE / 256; i++) {
-        _mm_prefetch((const char *)&bitmap[i * 8], _MM_HINT_T0);
-        _mm_prefetch((const char *)&bitmap[(i + 1) * 8], _MM_HINT_T0);
+		_mm_prefetch((const char *)&bitmap[i * 8], _MM_HINT_T0);
+		_mm_prefetch((const char *)&bitmap[(i + 1) * 8], _MM_HINT_T0);
 
         __m256i bitmap_chunk = _mm256_loadu_si256((__m256i *)&bitmap[i * 8]);
         __m256i inverted_chunk = _mm256_andnot_si256(bitmap_chunk, mask);
@@ -95,7 +97,7 @@ static void *find_free_block(size_t size, size_t alignment) {
                     int enough_space = 1;
                     for (size_t k = 0; k < units_needed; k++) {
                         size_t idx = start + k;
-                        if (bitmap[idx / 32] & (1U << (idx % 32))) {
+                        if (bitmap[idx / 32] & (1U << (idx & 31))) {
                             enough_space = 0;
                             break;
                         }
@@ -104,7 +106,7 @@ static void *find_free_block(size_t size, size_t alignment) {
                     if (enough_space) {
                         for (size_t k = 0; k < units_needed; k++) {
                             size_t idx = start + k;
-                            bitmap[idx / 32] |= (1U << (idx % 32));
+                            bitmap[idx / 32] |= (1U << (idx & 31));
                         }
 
                         uintptr_t aligned_addr = align_up(addr, alignment);
@@ -142,15 +144,32 @@ static inline void split_block(Block *block, size_t size, size_t alignment) {
     block->next = new_block;
 }
 
+static inline void mark_bits(uintptr_t start, size_t size, int value) {
+    size_t start_idx = (start - (uintptr_t)memory_pool) / BLOCK_UNIT_SIZE;
+    size_t end_idx = start_idx + (size / BLOCK_UNIT_SIZE);
+
+    for (size_t i = start_idx; i < end_idx; i++) {
+        if (value) bitmap[i / 32] |= (1U << (i % 32));
+        else       bitmap[i / 32] &= ~(1U << (i % 32));
+    }
+}
+
 Block *request_space(Block *last, size_t size, size_t alignment) {
     if (__builtin_expect(size == 0, 0)) 
         return NULL;
 
+    size_t page_size = sysconf(_SC_PAGESIZE);
+    size_t total_size = align_up(size + sizeof(Block), page_size);
     if ((alignment & (alignment - 1)) != 0) {
 		LOG_ERROR("[ERROR] Alignment must be a power of 2.\n"); 
         return NULL;
+	}
+	void *ptr = mmap(NULL, total_size, PROT_READ | PROT_WRITE, 
+					   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        LOG_ERROR("mmap failed for size %zu (aligned to %zu)", size, total_size);
+        return NULL;
     }
-
     void *free_block = find_free_block(size, alignment);
     if (free_block) {
         uintptr_t block_addr = (uintptr_t)free_block - sizeof(Block);
@@ -173,8 +192,6 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
     }
 
     size_t alignment_mask = alignment - 1;
-    size_t total_size = size + sizeof(Block) + alignment_mask;
-    size_t page_size = sysconf(_SC_PAGESIZE);
     total_size = (total_size + page_size - 1) & ~(page_size - 1);
     void *request = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -220,55 +237,88 @@ Block *request_space(Block *last, size_t size, size_t alignment) {
 
 static inline void coalesce_free_blocks() {
     Block *current = freelist;
+    Block *prev = NULL;
 
     while (current && current->next) {
         uintptr_t current_end = (uintptr_t)current + BLOCK_SIZE + current->size;
         uintptr_t next_start = (uintptr_t)current->next;
 
         if (current_end == next_start && current->_free && current->next->_free) {
-            current->size += BLOCK_SIZE + current->next->size;
+            size_t merged_size = current->size + BLOCK_SIZE + current->next->size;
+            
+            mark_bits(current_end, current->next->size, 0);
+            mark_bits((uintptr_t)current, merged_size, 1);
+            
+            current->size = merged_size;
             current->next = current->next->next;
-        } else {
-            current = current->next;
+            
+            continue;
         }
+        
+        prev = current;
+        current = current->next;
     }
 }
 
+static void insert_into_bin(Block *block) {
+    if (!block || !block->_free) return;
+    
+    int index = get_bin_index(block->size);
+    block->next = bins[index];
+    bins[index] = block;
+    
+    uintptr_t block_start = (uintptr_t)block + BLOCK_SIZE;
+    mark_bits(block_start, block->size, 0);
+}
 
 static inline void improved_free(void *ptr) {
-    if (!ptr)
+    if (!ptr) return;
+
+    Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
+
+    if (block->_free) {
+        LOG_ERROR("Double free detected at %p\n", ptr);
         return;
+    }
 
-    if ((uintptr_t)ptr >= (uintptr_t)memory_pool && 
-        (uintptr_t)ptr < (uintptr_t)memory_pool + MEMORY_POOL_SIZE) {
-        
-        Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
-        if (block->_free)
-            return; 
-
-        
-		block->_free = 1;
-		insert_sorted(block);
-
-    } else {
-        Block *block = (Block *)((uintptr_t)ptr - sizeof(Block));
-        if (block->is_mmap) {
-            size_t total_size = block->size + sizeof(Block);
-            if (munmap((void *)((uintptr_t)block), total_size) == -1)
-                perror("munmap failed");
+    if (block->is_mmap) {
+        size_t total_size = block->size + sizeof(Block);
+        if (munmap(block, total_size)) {
+            perror("munmap failed");
         }
+        return;
+    }
+
+    if ((uintptr_t)block < (uintptr_t)memory_pool || 
+        (uintptr_t)block > (uintptr_t)memory_pool + MEMORY_POOL_SIZE) {
+        LOG_ERROR("Invalid block address: %p\n", block);
+        return;
+    }
+
+    block->_free = 1;
+    
+    if (block->size <= MAX_BIN_SIZE) {
+        insert_into_bin(block);
+    } else {
+        insert_sorted(block);
+    }
+	VALGRIND_FREELIKE_BLOCK(ptr, 0);
+	VALGRIND_MAKE_MEM_NOACCESS(ptr, block->size);
+    if (block->size > MAX_BIN_SIZE) {
+        coalesce_free_blocks();
     }
 }
 
-void *_malloc(size_t size) {
-    if (size == 0) 
+
+inline void *_malloc(size_t size) {
+    if (size == 0)
         return NULL;
-    
-	static int is_initialized = 0;
-	if (!is_initialized) {
-		initialize_memory_pool();
-		is_initialized = 1;
-	}
+
+    static int is_initialized = 0;
+    if (!is_initialized) {
+        initialize_memory_pool();
+        is_initialized = 1;
+    }
 
     size = align_up(size, ALIGNMENT);
 
@@ -276,20 +326,41 @@ void *_malloc(size_t size) {
         size_t total_size = size + BLOCK_SIZE;
         void *addr = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-		madvise(addr, total_size, MADV_SEQUENTIAL);
+        madvise(addr, total_size, MADV_SEQUENTIAL);
         if (addr == MAP_FAILED) {
-			perror("mmap failed");
+            perror("mmap failed");
             return NULL;
         }
         Block *block = (Block *)addr;
         block->size = size;
         block->_free = 0;
         block->is_mmap = 1;
-        return (void *)(block + 1);
+        block->next = NULL;
+        block->aligned_address = (void *)(block + 1);
+        return block->aligned_address;
     }
 
-    Block *block = request_space(freelist, size, ALIGNMENT);
-    if (!block) 
+    Block *block = NULL;
+    int bin_index = get_bin_index(size);
+
+    for (int i = bin_index; i < NUM_BINS; i++) {
+        if (bins[i] != NULL) {
+            block = bins[i];
+            bins[i] = block->next;
+            break;
+        }
+    }
+
+    if (block) {
+        if (block->size >= size + BLOCK_SIZE) {
+            split_block(block, size, ALIGNMENT);
+        }
+        block->_free = 0;
+        return block->aligned_address;
+    }
+
+    block = request_space(freelist, size, ALIGNMENT);
+    if (!block)
         return NULL;
 
     if ((uintptr_t)block->aligned_address < (uintptr_t)memory_pool ||
@@ -297,10 +368,12 @@ void *_malloc(size_t size) {
         return NULL;
     }
 
+	VALGRIND_MALLOCLIKE_BLOCK(block->aligned_address, size, 0, 0);
     return block->aligned_address;
 }
 
 void _free(void *ptr) {
+
 	improved_free(ptr);
 	coalesce_free_blocks();
 }
@@ -327,4 +400,63 @@ void *my_realloc(void *ptr, size_t size) {
     return new_ptr;
 }
 
+#include <errno.h>
 
+int _posix_memalign(void **memptr, size_t alignment, size_t size) {
+    unsigned char *mem, *new, *end;
+    size_t header, footer;
+
+    if (__builtin_expect((alignment == 0 || __builtin_popcount(alignment) != 1), 0)) {
+        LOG_ERROR("[ERROR] Alignment must be a power of 2.\n");
+        return EINVAL;
+    }
+
+    if (__builtin_expect(alignment <= 4 * sizeof(size_t), 1)) {
+        mem = _malloc(size);
+        if (__builtin_expect(!mem, 0))
+            return errno;
+        *memptr = mem;
+        return 0;
+    }
+
+    mem = _malloc(size + alignment - 1);
+    if (__builtin_expect(!mem, 0))
+        return errno;
+
+    header = ((size_t *)mem)[-1];
+    end = mem + (header & -8);
+	footer = ((size_t *)end)[-2];
+
+	new = (void *)(((uintptr_t)mem + alignment - 1) & ~(uintptr_t)(alignment - 1));
+
+	if (__builtin_expect(!(header & 7), 1)) {
+		((size_t *)new)[-2] = ((size_t *)mem)[-2] + (new - mem);
+		((size_t *)new)[-1] = ((size_t *)mem)[-1] - (new - mem);
+		switch (alignment) {
+			case 16: *memptr = __builtin_assume_aligned(new, 16); break;
+			case 32: *memptr = __builtin_assume_aligned(new, 32); break;
+			case 64: *memptr = __builtin_assume_aligned(new, 64); break;
+			case 128: *memptr = __builtin_assume_aligned(new, 128); break;
+			default: *memptr = new; break;
+		}
+		return 0;
+	}
+
+	((size_t *)mem)[-1] = (header & 7) | (new - mem);
+	((size_t *)new)[-2] = (footer & 7) | (new - mem);
+	((size_t *)new)[-1] = (header & 7) | (end - new);
+	((size_t *)end)[-2] = (footer & 7) | (end - new);
+
+	if (__builtin_expect(new != mem, 1))
+		_free(mem);
+	switch (alignment) {
+		case 16: *memptr = __builtin_assume_aligned(new, 16); break;
+		case 32: *memptr = __builtin_assume_aligned(new, 32); break;
+		case 64: *memptr = __builtin_assume_aligned(new, 64); break;
+		case 128: *memptr = __builtin_assume_aligned(new, 128); break;
+		default: *memptr = new; break;
+	}
+
+	VALGRIND_MAKE_MEM_DEFINED((void **)aligned - 1, sizeof(void *));
+	return 0;
+}
